@@ -1,50 +1,59 @@
-/* Prompt minimap: a zero-height sticky slot so ticks stay in the Chat
-   scrollport gutter without growing scrollHeight. The nav sits in that
-   leftover left gutter, up to 64px from the transcript column, with a
-   20px floor so a narrow gutter does not clip. */
+/* Prompt minimap: an independent floating rail at the conversation edge.
+   The shell is intentionally auto-sized: each prompt contributes one dot,
+   so the capsule length communicates the number of prompts without becoming
+   part of the transcript's layout or scroll height. */
 
 .slot {
-  --dsh-prompt-nav-offset: clamp(
-    20px,
-    calc((100% - var(--dsh-chat-content-width)) / 2),
-    64px
+  position: fixed;
+  top: 50%;
+  left: calc(
+    var(--dsh-sidebar-width, 280px)
+    + var(--dsh-session-tab-center-x, 41px)
+    - 14px
   );
-  position: sticky;
-  top: calc((100% - var(--dsh-composer-height, 0px)) * 0.5);
-  z-index: 6;
-  height: 0;
-  width: 0;
-  margin-left: max(0px, calc((100% - var(--dsh-chat-content-width)) / 2));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  width: 28px;
+  max-height: calc(100vh - 48px);
+  box-sizing: border-box;
+  padding: 5px 3px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover-solid) 78%, transparent);
+  box-shadow: var(--dsw-shadow-lv2);
+  backdrop-filter: blur(12px);
+  transform: translateY(-50%);
   pointer-events: none;
 }
 
 .nav {
   pointer-events: auto;
-  width: 20px;
-  max-height: calc(100vh - var(--dsh-composer-height, 0px) - 96px);
-  margin-left: calc(-1 * var(--dsh-prompt-nav-offset));
-  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-height: inherit;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   max-height: inherit;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 4px 0;
+  padding: 1px 0;
 }
 
 .tick {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: flex-start;
-  width: 16px;
-  height: 10px;
+  justify-content: center;
+  width: 20px;
+  height: 14px;
   margin: 0;
   padding: 0;
   border: none;
@@ -54,23 +63,26 @@
 
 .tick::after {
   content: '';
-  width: 10px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--dsw-alias-label-dimmed);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary);
   transition:
     width 120ms var(--ds-ease-in-out),
+    height 120ms var(--ds-ease-in-out),
     background 120ms var(--ds-ease-in-out);
 }
 
 .tick[data-active]::after {
-  width: 14px;
-  background: var(--dsw-alias-label-secondary);
+  width: 10px;
+  height: 10px;
+  background: var(--dsw-alias-state-business-primary);
 }
 
 .tick:hover::after,
 .tick:focus-visible::after {
-  width: 16px;
+  width: 10px;
+  height: 10px;
   background: var(--dsw-alias-label-primary);
 }
 
@@ -86,7 +98,7 @@
 }
 
 .preview {
-  position: fixed;
+  position: absolute;
   z-index: 100;
   width: 280px;
   padding: 10px 12px;

@@ -140,6 +140,7 @@ describe('AppFrame', () => {
   it('renders three tracks from store state', () => {
     const { frame } = mountFrame()
     expect(tracks(frame)).toEqual([280, 0])
+    expect(frame.style.getPropertyValue('--dsh-sidebar-width')).toBe('280px')
   })
 
   it('renders the session pair with empty owner shares (sessionId is framework-standard)', () => {
@@ -255,6 +256,7 @@ describe('AppFrame', () => {
     const { frame, instance, slotCalls, getByTestId } = mountFrame()
     act(() => { instance.actions.toggleSidebar() })
     expect(tracks(frame)).toEqual([SIDEBAR_COLLAPSED, 0])
+    expect(frame.style.getPropertyValue('--dsh-sidebar-width')).toBe('56px')
     expect(getByTestId('sidebar-content')).toBeTruthy()
     expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(true)
     const lastSidebarCall = slotCalls.filter(c => c.key === 'sidebar').at(-1)!

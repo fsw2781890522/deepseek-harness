@@ -16,6 +16,8 @@ const items: readonly PromptNavItem[] = [
   { key: 'u2', title: 'second', body: '', attachment: null, ariaLabel: 'second' },
 ]
 
+const oneItem: readonly PromptNavItem[] = [items[0]!]
+
 describe('PromptNav', () => {
   it('renders one tick per prompt and jumps on click', () => {
     const onJump = vi.fn()
@@ -43,6 +45,47 @@ describe('PromptNav', () => {
     expect(view.queryByRole('tooltip')).toBeNull()
   })
 
+  it('anchors the preview to the hovered dot and clears it after clicking', () => {
+    const onJump = vi.fn()
+    const view = render(
+      <PromptNav items={items} activeKey={null} onJump={onJump} t={t} />,
+    )
+    const tick = view.getByRole('button', { name: 'first prompt' })
+    const shell = tick.closest('[data-chat-prompt-nav-shell]')
+    expect(shell).not.toBeNull()
+    vi.spyOn(shell!, 'getBoundingClientRect').mockReturnValue({
+      x: 100,
+      y: 200,
+      top: 200,
+      right: 128,
+      bottom: 248,
+      left: 100,
+      width: 28,
+      height: 48,
+      toJSON: () => ({}),
+    })
+    vi.spyOn(tick, 'getBoundingClientRect').mockReturnValue({
+      x: 104,
+      y: 250,
+      top: 250,
+      right: 124,
+      bottom: 264,
+      left: 104,
+      width: 20,
+      height: 14,
+      toJSON: () => ({}),
+    })
+
+    fireEvent.mouseEnter(tick)
+    const card = view.getByRole('tooltip')
+    expect(card.style.left).toBe('34px')
+    expect(card.style.top).toBe('57px')
+
+    fireEvent.click(tick)
+    expect(onJump).toHaveBeenCalledWith('u1')
+    expect(view.queryByRole('tooltip')).toBeNull()
+  })
+
   it('shows the preview card on keyboard focus', () => {
     const view = render(
       <PromptNav items={items} activeKey={null} onJump={() => {}} t={t} />,
@@ -53,9 +96,9 @@ describe('PromptNav', () => {
     expect(view.queryByRole('tooltip')).toBeNull()
   })
 
-  it('hides itself when there are no user prompts', () => {
+  it('hides itself until the session has at least two user prompts', () => {
     const view = render(
-      <PromptNav items={[]} activeKey={null} onJump={() => {}} t={t} />,
+      <PromptNav items={oneItem} activeKey={null} onJump={() => {}} t={t} />,
     )
     expect(view.queryByRole('navigation')).toBeNull()
   })
