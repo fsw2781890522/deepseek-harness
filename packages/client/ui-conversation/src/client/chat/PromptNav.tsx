@@ -1,4 +1,5 @@
-// Floating prompt minimap: round dots for loaded user messages, a Codex-style
+// Floating prompt minimap: round dots for loaded user prompts (including
+// steering/interjection prompts), a Codex-style
 // hover card, and click-to-jump. ChatView owns scroll targeting.
 
 import { useCallback, useRef, useState } from 'react'

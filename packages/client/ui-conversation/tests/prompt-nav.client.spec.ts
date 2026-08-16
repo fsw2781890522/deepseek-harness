@@ -49,7 +49,7 @@ describe('promptNavItems', () => {
   const nodeOf = (nodes: Record<string, { kind: string; data: unknown }>) =>
     (key: string) => nodes[key]
 
-  it('lists only user Nodes in order', () => {
+  it('lists every user-input Node in order, including steering prompts', () => {
     const items = promptNavItems(
       ['u1', 'a', 'steer', 'u2'],
       nodeOf({
@@ -62,6 +62,7 @@ describe('promptNavItems', () => {
     )
     expect(items).toEqual([
       { key: 'u1', title: 'first', body: '', attachment: null, ariaLabel: 'first' },
+      { key: 'steer', title: 'steer', body: '', attachment: null, ariaLabel: 'steer' },
       { key: 'u2', title: 'second', body: 'more', attachment: null, ariaLabel: 'second' },
     ])
   })

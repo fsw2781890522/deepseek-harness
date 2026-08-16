@@ -154,7 +154,6 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
   const { set, source } = makeSource(init)
   const openDetails = vi.fn<(t: SelectionTarget) => void>()
   const openFile = vi.fn<(path: string) => void>()
-  const loadOlder = vi.fn()
   const inspectCall = vi.fn<(callId: string) => void>()
   // In-memory scroll memory matching the apply.ts per-session map contract.
   let savedScroll: ReturnType<ChatViewSlotProps['chatScroll']['read']> = null
@@ -285,7 +284,6 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
     SessionProvider: SessionProviderStub,
     openDetails,
     openFile,
-    loadOlder,
     loadImage: vi.fn(() => Promise.reject(new Error('not used'))),
     inspectCall,
     chatScroll,
@@ -297,7 +295,7 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
   }
   const setSelection = (next: SelectionTarget | null): void => { chat.actions.select(next) }
   return {
-    set, ChatView, props, openDetails, openFile, loadOlder, inspectCall,
+    set, ChatView, props, openDetails, openFile, inspectCall,
     chatScroll, forkAt, setSelection, toolOwners,
   }
 }
@@ -408,36 +406,10 @@ describe('ChatView', () => {
     expect(h.toolOwners[0]).toMatchObject({ callId: 'w1', toolName: '' })
   })
 
-  it('prepend keeps the reader\'s latest pending-request scroll position anchored', () => {
+  it('does not render a paging control because the session opens with full history', () => {
     const h = makeHarness({ nodes: [user(9, 'first visible'), user(10, 'next visible')], hasMore: true })
     const view = render(<h.ChatView {...h.props} />)
-    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
-    const first = view.container.querySelector('[data-chat-flow-key="fixture:user:9"]') as HTMLDivElement
-    const next = view.container.querySelector('[data-chat-flow-key="fixture:user:10"]') as HTMLDivElement
-    let firstTop = 100
-    let nextTop = 300
-    vi.spyOn(scroller, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: 0, bottom: 200 } as DOMRect),
-    )
-    vi.spyOn(first, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: firstTop, bottom: firstTop + 40 } as DOMRect),
-    )
-    vi.spyOn(next, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: nextTop, bottom: nextTop + 40 } as DOMRect),
-    )
-    Object.defineProperty(scroller, 'scrollHeight', { value: 800, writable: true })
-    Object.defineProperty(scroller, 'clientHeight', { value: 200, writable: true })
-    readerScroll(scroller, 50)
-    fireEvent.click(view.getByText('加载更早'))
-    // The reader moves after the request starts; this, not the click-time
-    // row, is the intent the arriving page must preserve.
-    firstTop = -200
-    nextTop = 60
-    readerScroll(scroller, 90)
-    Object.defineProperty(scroller, 'scrollHeight', { value: 1300, writable: true })
-    nextTop = 560
-    act(() => { h.set({ nodes: [assistant(2, 'older'), user(9, 'first visible'), user(10, 'next visible')] }) })
-    expect(scroller.scrollTop).toBe(590) // latest 90 + the anchored row's 500px prepend shift
+    expect(view.queryByRole('button', { name: '加载更早' })).toBeNull()
   })
 
   it('renders the fixture main line as independently keyed business nodes', () => {
@@ -1034,45 +1006,6 @@ describe('ChatView', () => {
     expect(owner.inspectCall).toBe(h.inspectCall)
   })
 
-  it('prepend preserves a semantic row; a trailing user node force-scrolls', () => {
-    const h = makeHarness({ nodes: [user(5, 'later'), assistant(6, 'a')], hasMore: true })
-    const view = render(<h.ChatView {...h.props} />)
-    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
-    // jsdom has no layout: fake the metrics the anchor math reads.
-    Object.defineProperty(scroller, 'scrollHeight', { value: 1000, writable: true })
-    Object.defineProperty(scroller, 'clientHeight', { value: 400, writable: true })
-    const anchored = view.container.querySelector('[data-chat-flow-key="fixture:user:5"]') as HTMLDivElement
-    let anchoredTop = 100
-    vi.spyOn(anchored, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: anchoredTop, bottom: anchoredTop + 40 } as DOMRect),
-    )
-    readerScroll(scroller, 80)
-    // Arm the paging anchor, then deliver an older page (head seq decreases).
-    fireEvent.click(view.getByText('加载更早'))
-    Object.defineProperty(scroller, 'scrollHeight', { value: 1600, writable: true })
-    anchoredTop = 700
-    act(() => { h.set({ nodes: [user(1, 'old'), assistant(2, 'b'), user(5, 'later'), assistant(6, 'a')] }) })
-    expect(scroller.scrollTop).toBe(680) // reader offset 80 + the anchored row's 600px shift
-    // A new trailing user bubble (own words) force-scrolls to the bottom.
-    act(() => { h.set({ nodes: [user(1, 'old'), assistant(2, 'b'), user(5, 'later'), assistant(6, 'a'), user(9, 'mine')] }) })
-    expect(scroller.scrollTop).toBe(1600)
-  })
-
-  it('back-to-bottom cancels an in-flight paging anchor', () => {
-    const h = makeHarness({ nodes: [user(9, 'late')], hasMore: true })
-    const view = render(<h.ChatView {...h.props} />)
-    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
-    Object.defineProperty(scroller, 'scrollHeight', { value: 800, writable: true })
-    Object.defineProperty(scroller, 'clientHeight', { value: 200, writable: true })
-    readerScroll(scroller, 50)
-    fireEvent.click(view.getByText('加载更早'))
-    fireEvent.click(view.getByLabelText('回到底部'))
-    Object.defineProperty(scroller, 'scrollHeight', { value: 1_300, writable: true })
-    act(() => { h.set({ nodes: [assistant(2, 'older'), user(9, 'late')] }) })
-    expect(scroller.scrollTop).toBe(1_300)
-    expect(h.chatScroll.read()).toBeNull()
-  })
-
   it('scrolling away disables follow and shows the back-to-bottom button; clicking returns', () => {
     const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
     const view = render(<h.ChatView {...h.props} />)
@@ -1282,52 +1215,6 @@ describe('ChatView', () => {
     } finally {
       host.remove()
     }
-  })
-
-  it('one click starts paging and holds an obvious busy control until the request settles', async () => {
-    let settle!: () => void
-    const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true })
-    h.loadOlder.mockImplementation(() => new Promise<void>((resolve) => { settle = resolve }))
-    const view = render(<h.ChatView {...h.props} />)
-    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
-    act(() => {
-      button.click()
-      button.click()
-    })
-    expect(h.loadOlder).toHaveBeenCalledTimes(1)
-    expect(button.disabled).toBe(true)
-    expect(button.getAttribute('aria-busy')).toBe('true')
-    expect(button.textContent).toContain('加载中')
-    await act(async () => { settle() })
-    expect(button.disabled).toBe(false)
-    expect(button.getAttribute('aria-busy')).toBeNull()
-    expect(button.textContent).toBe('加载更早')
-  })
-
-  it('keeps the paging control busy from session loadingOlder without a second click', () => {
-    const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true, loadingOlder: true })
-    const view = render(<h.ChatView {...h.props} />)
-    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
-    expect(button.disabled).toBe(true)
-    expect(button.textContent).toContain('加载中')
-    fireEvent.click(button)
-    expect(h.loadOlder).not.toHaveBeenCalled()
-  })
-
-  it('queues one early older-page click until the history window is open', async () => {
-    const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true, openState: 'loading' })
-    const view = render(<h.ChatView {...h.props} />)
-    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
-    expect(button.disabled).toBe(false)
-    fireEvent.click(button)
-    fireEvent.click(button)
-    expect(h.loadOlder).not.toHaveBeenCalled()
-    expect(button.disabled).toBe(true)
-
-    act(() => { h.set({ openState: 'open' }) })
-    expect(h.loadOlder).toHaveBeenCalledOnce()
-    await act(async () => {})
-    expect(button.disabled).toBe(false)
   })
 
   it('does not render an orphan processed group before the first user prompt', () => {

@@ -25,7 +25,7 @@
 .sidebarCol {
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-specific-sidebar-fill);
+  background: var(--dsw-alias-bg-base);
   border-right: 1px solid var(--dsw-alias-border-l1);
 }
 

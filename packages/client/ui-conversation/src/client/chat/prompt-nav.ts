@@ -1,4 +1,4 @@
-/** Prompt minimap: one tick per loaded user message, derived from Chat order. */
+/** Prompt minimap: one tick per loaded user prompt, including steering input. */
 
 /** Accessible tick name cap so announcements stay one line. */
 const ARIA_TITLE_MAX = 64
@@ -75,9 +75,10 @@ function attachmentLabel(parts: PromptParts, copy: PromptNavCopy): string | null
 
 /**
  * Collect minimap ticks from the loaded Chat order.
- * Steering, context, and assistant rows are omitted; only `user` Nodes appear.
+ * Context and assistant rows are omitted; both `user` and `steering` Nodes
+ * represent user-authored prompts and receive a tick.
  * @param order - visible Chat Node keys in render order.
- * @param nodeOf - current Node for one key; missing or non-user keys are skipped.
+ * @param nodeOf - current Node for one key; missing or non-prompt keys are skipped.
  * @param copy - localized empty/image fallbacks.
  * @returns ticks in transcript order.
  */
@@ -89,7 +90,7 @@ export function promptNavItems(
   const items: PromptNavItem[] = []
   for (const key of order) {
     const node = nodeOf(key)
-    if (node?.kind !== 'user') continue
+    if (node === undefined || (node.kind !== 'user' && node.kind !== 'steering')) continue
     const data = node.data as { content?: unknown }
     const parts = promptParts(data.content)
     const preview = splitPromptPreview(parts.text)

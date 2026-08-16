@@ -680,13 +680,6 @@ export interface ChatViewInjected {
    * (relative paths resolve against the session cwd).
    */
   openFile: (path: string) => void
-  /**
-   * Page the Session history window backwards. A returned promise is the
-   * in-flight Host request: the view holds the paging control busy until it
-   * settles. A void return still starts paging; `Session.loadingOlder` keeps
-   * the same control busy once the snapshot catches up.
-   */
-  loadOlder: () => void | Promise<void>
   /** Resolve a session-authorized historical image for inline display. */
   loadImage: (attachment: ImageAttachmentRef) => Promise<string>
   /** Hand a call off to the trajectory view: write the one-shot inspect target and switch tabs. */
