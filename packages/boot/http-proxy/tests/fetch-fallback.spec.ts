@@ -44,7 +44,7 @@ describe('wrapGlobalFetch', () => {
     globalThis.fetch = async (_input, init) => {
       await new Promise<void>((resolve, reject) => {
         const signal = init?.signal
-        if (signal === undefined) {
+        if (signal == null) {
           resolve()
           return
         }
