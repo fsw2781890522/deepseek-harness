@@ -8,7 +8,7 @@ The shell ships no onboarding copy of its own — all text arrives from registra
 
 A loopback browser loads the provider's `hasDocument` capability through `settings.describe` and renders **Open configuration file** only when the Host confirms that a provider-owned local document can be prepared. The action sends the pathless, loopback-only `settings.openDocument` request; the Host resolves the provider path again, materializes an absent document, and hands it to a native text editor (`open -t` on macOS, bypassing a browser file association; the desktop file association on Linux and Windows; Windows association after `wslpath -w` translation on WSL). Open failures keep the action available and render a localized error. Reopening the dialog or reconnecting refreshes availability after a transient read failure or Host topology change. Remote browsers never register the action and never issue the privileged settings read.
 
-The Host half registers `ui-onboarding` in the user-settings seam. The welcome step contributed by `ui-settings-models` reads and writes its `welcomeNoticeVersion` through the existing public settings boundary; the shell itself remains policy-free.
+The Host half registers `ui-onboarding` in the user-settings seam. The welcome step contributed by `ui-settings-models` reads and writes its `welcomeNoticeVersion` through the existing public settings boundary; the shell itself remains policy-free. When the Tauri desktop shell injects `window.__DSH_DESKTOP__`, this plugin also registers the General **Check for updates** row (order 90); a plain `dsh web` browser does not see it. The row calls `checkUpdate()` / `installUpdate()` on that bridge and never talks to the session log.
 
 ## Model Experience
 
@@ -20,4 +20,4 @@ None; this package neither assembles nor sends a provider request.
 
 ## Known Limitations and Deferred Work
 
-- The General section has no built-in rows; each row appears only when its owning feature plugin is mounted.
+- The General section has no built-in rows in `dsh web`. The desktop shell injects `window.__DSH_DESKTOP__`, and this plugin then registers the Check for updates row. Other rows appear only when their owning feature plugin is mounted.

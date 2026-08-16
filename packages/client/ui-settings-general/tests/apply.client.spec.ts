@@ -8,6 +8,7 @@ import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
+import { DesktopUpdateRow } from '../src/client/DesktopUpdateRow.tsx'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from '../src/client/SettingsDocumentAction.tsx'
@@ -199,6 +200,28 @@ describe('ui-settings-general apply', () => {
     b.locale.setLocale('en')
     expect(resolveSlotLabel(generalEntry(b.slots)!.options.label)).toBe('General')
     b.locale.setLocale('zh')
+  })
+
+  it('registers the desktop update row only when the Tauri bridge is present', async () => {
+    ;(globalThis as { __DSH_DESKTOP__?: unknown }).__DSH_DESKTOP__ = {
+      version: '0.2.0',
+      checkUpdate: async () => ({ status: 'current', current: '0.2.0' }),
+      installUpdate: async () => {},
+    }
+    try {
+      const b = await bench()
+      declare(b.slots)
+      const fiber = b.ctx.plugin({ inject: [...inject], apply })
+      await fiber.await()
+      const items = b.slots.entries('settings.general.item')
+      expect(items).toHaveLength(1)
+      expect(items[0]!.component).toBe(DesktopUpdateRow)
+      expect(items[0]!.options).toMatchObject({ id: 'desktop-update', order: 90 })
+      await fiber.dispose()
+      expect(b.slots.entries('settings.general.item')).toEqual([])
+    } finally {
+      delete (globalThis as { __DSH_DESKTOP__?: unknown }).__DSH_DESKTOP__
+    }
   })
 
   it('removes every seat and the item declaration on teardown', async () => {
