@@ -1449,7 +1449,9 @@ describe('ChatView', () => {
     expect(view.getByText(/历史加载失败：boom/)).toBeTruthy()
     const loading = makeHarness({ openState: 'loading' })
     const lv = render(<loading.ChatView {...loading.props} />)
-    expect(lv.getByText('载入历史…')).toBeTruthy()
+    const loadingHint = lv.getByText('载入历史…')
+    expect(loadingHint).toBeTruthy()
+    expect(loadingHint.className).toMatch(/historyLoading/)
   })
 
   it('pending waits leave the flow entirely — questions and approvals both take over the composer', () => {

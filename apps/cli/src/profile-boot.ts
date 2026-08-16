@@ -34,6 +34,13 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 /** Shipped agent-preset root: beside this app's own config, in both source and built layouts. */
 const SHIPPED_PRESET_ROOT = fileURLToPath(new URL('../config/agent-presets/', import.meta.url))
 
+/**
+ * Factory presets intentionally presented as custom presets. This separate
+ * root keeps the bundled `anchored-standard` choice in the Custom section
+ * without weakening the system trust of the ordinary shipped roster.
+ */
+const FACTORY_CUSTOM_PRESET_ROOT = fileURLToPath(new URL('../config/agent-presets-custom/', import.meta.url))
+
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
@@ -55,6 +62,26 @@ export const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.me
 
 /** The session-telemetry row id the DSH_TELEMETRY_DISABLED switch targets. */
 const TELEMETRY_ROW_ID = 'session-telemetry-otel'
+
+/**
+ * Roots supplied by the desktop launcher for the agent-preset roster.
+ *
+ * The second root is user-trust by design: the desktop's factory preset is a
+ * preinstalled customization, not one of the harness's generic built-ins.
+ * Keeping the roots separate lets the web surfaces place it under Custom
+ * while the default remains the same `anchored-standard` id.
+ *
+ * @returns the ordered roots used by the launcher.
+ */
+export function configuredPresetRoots(): readonly [
+  { path: string; trust: 'system' },
+  { path: string; trust: 'user' },
+] {
+  return [
+    { path: SHIPPED_PRESET_ROOT, trust: 'system' },
+    { path: FACTORY_CUSTOM_PRESET_ROOT, trust: 'user' },
+  ]
+}
 
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tree is composed as patches:
@@ -161,7 +188,7 @@ function composeProfile(
       id: 'agent-presets',
       config: {
         ...(rows.get('agent-presets')?.config ?? {}) as Record<string, unknown>,
-        roots: [{ path: SHIPPED_PRESET_ROOT, trust: 'system' }],
+        roots: configuredPresetRoots(),
       },
     })
   }
