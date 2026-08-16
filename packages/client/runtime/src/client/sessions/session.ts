@@ -28,8 +28,15 @@ import type { ProjectionsBaseline } from './projection-store.ts'
 import { resolvedClientTimeZone } from '../time-zone.ts'
 import { SessionQueueMirror } from './queue-mirror.ts'
 
-/** Messages requested per history page. */
+/** Legacy page size retained for the trajectory reader's compatibility API. */
 export const PAGE_MESSAGES = 50
+
+/**
+ * Full-history request size used when a session is opened. The host accepts
+ * any positive safe integer and returns the complete contiguous event log
+ * when this exceeds the finite history length.
+ */
+export const FULL_HISTORY_MESSAGES = Number.MAX_SAFE_INTEGER
 
 /** Manager-owned observers of a Session object's local state edges. */
 export interface SessionOptions {
@@ -103,7 +110,7 @@ export class Session implements SessionFace {
   private lastAgentError: string | null = null
   /** Live events buffered during open/resync and stitched by sequence once history lands. */
   private liveBuffer: { event: SessionEvent; view: ToolEventView | undefined }[] = []
-  /** Gap repair in flight; live events detour to the buffer until the tail page lands. */
+  /** Gap repair in flight; live events detour to the buffer until the full history lands. */
   private stitching = false
   /** subscribed.lastSeq baseline (gap detection; null when no subscribed frame arrived — degrade to the liveBuffer dedup path). */
   private subscribedLastSeq: number | null = null
@@ -111,7 +118,7 @@ export class Session implements SessionFace {
   /**
    * Per-session projection value store (push model; see the session-projection
    * subsystem page, docs/subsystems/session-projection.md): finished whole
-   * values computed on the host, seeded by the tail page's
+   * values computed on the host, seeded by the full-history response's
    * projections block and updated by `session/projection` frames under the
    * one higher-seq-wins rule. Keys are read via `projections.faceOf(key)`
    * (the useProjection resolution face); the conversation snapshot never
@@ -365,7 +372,7 @@ export class Session implements SessionFace {
     return { ok: true, value: { matched: result.value !== undefined } }
   }
 
-  /** First open: pull the tail page (idempotent — in-flight/already-open returns the existing promise). */
+  /** First open: pull the complete history (idempotent — in-flight/already-open returns the existing promise). */
   open(): Promise<void> {
     if (this.openState === 'open') return Promise.resolve()
     if (this.openPromise !== null) return this.openPromise
@@ -377,7 +384,7 @@ export class Session implements SessionFace {
     return promise
   }
 
-  /** Page up: pull one earlier page with the window's first seq as beforeSeq and prepend. */
+  /** Legacy page-up API for the trajectory reader; normal chat opens are already complete. */
   async loadOlder(): Promise<void> {
     if (this.openState !== 'open' || !this.hasMore || this.loadingOlder) return
     this.loadingOlder = true
@@ -620,7 +627,7 @@ export class Session implements SessionFace {
     this.openError = null
     this.notifier.markDirty()
     try {
-      let { result } = await this.history({ maxMessages: PAGE_MESSAGES })
+      let { result } = await this.history({ maxMessages: FULL_HISTORY_MESSAGES })
       if (generation !== this.openGeneration) return
       if (!result.ok) {
         this.openState = 'error'
@@ -628,10 +635,10 @@ export class Session implements SessionFace {
         return
       }
       this.installWindow(result.value.events, result.value.hasMore, result.value.projections)
-      // Gap detection: baseline past the window tail and liveBuffer did not cover it -> pull the tail page once more.
+      // Gap detection: baseline past the window tail and liveBuffer did not cover it -> pull complete history once more.
       const tailSeq = this.windowTailSeq()
       if (this.subscribedLastSeq !== null && tailSeq !== null && this.subscribedLastSeq > tailSeq) {
-        result = (await this.history({ maxMessages: PAGE_MESSAGES })).result
+        result = (await this.history({ maxMessages: FULL_HISTORY_MESSAGES })).result
         if (generation !== this.openGeneration) return
         if (result.ok) this.installWindow(result.value.events, result.value.hasMore, result.value.projections)
       }
@@ -706,7 +713,7 @@ export class Session implements SessionFace {
     else if (publication === 'animation-frame') this.notifier.markFrameDirty()
   }
 
-  /** Resync-lite: repull the tail page and stitch the liveBuffer through the shared
+  /** Resync-lite: repull complete history and stitch the liveBuffer through the shared
    *  installWindow path. No openState transition — the UI keeps the current window (no loading
    *  flash); events arriving meanwhile detour to liveBuffer via the stitching flag. */
   private async repairGap(): Promise<void> {
@@ -715,7 +722,7 @@ export class Session implements SessionFace {
     this.stitching = true
     const generation = this.openGeneration
     try {
-      const { result } = await this.history({ maxMessages: PAGE_MESSAGES })
+      const { result } = await this.history({ maxMessages: FULL_HISTORY_MESSAGES })
       // Failure or superseded by a full resync: drop — the resync path rebuilds and clears the buffer itself.
       if (result.ok && generation === this.openGeneration && this.openState === 'open') {
         this.installWindow(result.value.events, result.value.hasMore, result.value.projections)

@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import { FULL_HISTORY_MESSAGES } from '../src/client/sessions/session.ts'
 import { SessionManager } from '../src/client/sessions/manager.ts'
 import { FakeApiClient, deferred, err, fakeRemote, ok } from './fake-api.client.ts'
 import { entries, ev, plainTurn } from './event-script.client.ts'
@@ -368,7 +369,7 @@ describe('subagent catalogs', () => {
     await manager.get(S2).open()
     await manager.get(S2).prompt([{ type: 'text', text: 'continue' }], 'queue')
     expect(api.callsOf('subagent.history')).toEqual([
-      { parentSessionId: S1, childSessionId: S2, mode: 'continuable', maxMessages: 50 },
+      { parentSessionId: S1, childSessionId: S2, mode: 'continuable', maxMessages: FULL_HISTORY_MESSAGES },
     ])
     expect(api.callsOf('subagent.prompt')).toEqual([
       {

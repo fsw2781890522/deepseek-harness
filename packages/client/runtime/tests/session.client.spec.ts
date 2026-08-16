@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-commands/types'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { Session } from '../src/client/sessions/session.ts'
+import { FULL_HISTORY_MESSAGES, Session } from '../src/client/sessions/session.ts'
 import type {
   ChatConversationViewNode, ChatLocationNodeIndex, ChatNodeStore, ChatSnapshot,
   ConversationEventInput, ConversationNode, ConversationNodeDefinition,
@@ -184,18 +184,22 @@ describe('open', () => {
     expect(session.getSnapshot()).toMatchObject({ blank: false, composerPhase: 'active' })
   })
 
-  it('installs the tail page: cold → loading → open with window and nodes in place', async () => {
+  it('opens the complete history window in one request', async () => {
     const { api, session } = makeSession()
     const page = plainTurn(10, 3, '问', '答')
-    api.onHistory = () => histResponse(page, true)
+    api.onHistory = () => histResponse(page, false)
     expect(session.getSnapshot().openState).toBe('cold')
     const opening = session.open()
     expect(session.getSnapshot().openState).toBe('loading')
     await opening
     const snapshot = session.getSnapshot()
     expect(snapshot.openState).toBe('open')
-    expect(snapshot.hasMore).toBe(true)
+    expect(snapshot.hasMore).toBe(false)
     expect(snapshot.nodes.map(n => n.kind)).toEqual(['user', 'assistant'])
+    expect(api.callsOf('session.history')[0]).toMatchObject({
+      sessionId: SID,
+      maxMessages: FULL_HISTORY_MESSAGES,
+    })
     expect(snapshot.turnTimings.get(3)).toEqual({
       startTime: 1_700_000_000_010,
       endTime: 1_700_000_000_015,
@@ -459,7 +463,7 @@ describe('prompt and cancel errors', () => {
     expect(prompted).toEqual({ ok: true, value: { accepted: true } })
     expect(cancelled).toEqual({ ok: true, value: { accepted: true } })
     expect(api.callsOf('subagent.history')).toEqual([
-      { parentSessionId: PARENT, childSessionId: SID, mode: 'continuable', maxMessages: 50 },
+      { parentSessionId: PARENT, childSessionId: SID, mode: 'continuable', maxMessages: FULL_HISTORY_MESSAGES },
     ])
     expect(api.callsOf('subagent.prompt')).toEqual([
       {
@@ -511,7 +515,7 @@ describe('prompt and cancel errors', () => {
     expect(prompted).toMatchObject({ ok: false, error: { code: 'subagent-not-resumable' } })
     expect(cancelled).toMatchObject({ ok: false, error: { code: 'subagent-delivery-unavailable' } })
     expect(api.callsOf('subagent.history')).toEqual([
-      { parentSessionId: PARENT, childSessionId: SID, mode: 'one-shot', maxMessages: 50 },
+      { parentSessionId: PARENT, childSessionId: SID, mode: 'one-shot', maxMessages: FULL_HISTORY_MESSAGES },
     ])
     expect(api.callsOf('subagent.prompt')).toEqual([])
     expect(api.callsOf('subagent.interrupt')).toEqual([])

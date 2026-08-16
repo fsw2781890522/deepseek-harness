@@ -138,8 +138,6 @@ describe('conversation slot inject API', () => {
     expect(injected.views.list().map(v => v.id)).toEqual(['chat'])
 
     const chatView = b.chatViewApi(ROOT)
-    chatView.injected.loadOlder()
-    expect(b.sessionFake.loadOlder).toHaveBeenCalledTimes(1)
     chatView.injected.forkAt(17)
     await vi.waitFor(() => {
       expect(b.runtime.sessions.calls).toContainEqual({ method: 'open', args: [ROOT] })
@@ -312,13 +310,13 @@ describe('conversation slot inject API', () => {
     await b.runtime.dispose()
   })
 
-  it('scopedConversation fails loud when the session resolves no scope', async () => {
+  it('chat-view injection no longer depends on the removed paging scope', async () => {
     const b = await bench()
-    // The chat-view inject resolves the scoped conversation service at inject
-    // time: an unlisted session hits the scope() === undefined throw directly.
+    // Chat history is loaded in full when the session opens, so the chat-view
+    // injection has no legacy paging callback that needs a session scope.
     const entry = b.entryOf('conversation.view')
     const injectFn = entry.inject as unknown as (sessionId: SessionId, actions: unknown) => unknown
-    expect(() => injectFn('never-listed' as SessionId, {})).toThrow(/resolved no scope/)
+    expect(() => injectFn('never-listed' as SessionId, {})).not.toThrow()
     await b.runtime.dispose()
   })
 
