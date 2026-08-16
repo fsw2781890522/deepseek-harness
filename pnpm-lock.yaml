@@ -509,6 +509,9 @@ importers:
       '@deepseek-ai/dsh-hooks-codex':
         specifier: workspace:*
         version: link:../packages/hooks/hooks-codex
+      '@deepseek-ai/dsh-http-proxy':
+        specifier: workspace:*
+        version: link:../packages/boot/http-proxy
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:*
         version: link:../packages/runtime-diagnostics/invariants
@@ -978,6 +981,25 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
 
+  packages/boot/http-proxy:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      undici:
+        specifier: ^7.28.0
+        version: 7.28.0
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-settings':
+        specifier: workspace:^
+        version: link:../../settings/settings
+
   packages/bundle/base:
     dependencies:
       '@deepseek-ai/cordis-plugin-hmr':
@@ -1043,6 +1065,9 @@ importers:
       '@deepseek-ai/dsh-goal-round-driver':
         specifier: workspace:^
         version: link:../../goal/goal-round-driver
+      '@deepseek-ai/dsh-http-proxy':
+        specifier: workspace:^
+        version: link:../../boot/http-proxy
       '@deepseek-ai/dsh-jobs-local':
         specifier: workspace:^
         version: link:../../jobs/jobs-local

@@ -14,7 +14,7 @@ Status: implemented
 
 Tauri 壳向每个 WebView 文档（闪屏和 `http://127.0.0.1`）注入 `window.__DSH_DESKTOP__`。该对象暴露 `version`、`checkUpdate()` 和 `installUpdate()`，对应 `dsh_check_update` 与 `dsh_install_update`。检查用壳的 semver 对比 `latest`。安装下载用户看到的那份产物、校验 SHA-256、静默启动 NSIS（`/S`，最后一项 `/D=` 为当前安装目录），然后退出以便安装器替换 exe。用户数据仍在 `~/.dsh`。
 
-`ui-settings-general` 仅在该桥存在时注册通用设置项 `desktop-update`（order 90），因此普通 `dsh web` 不显示该行。该行是「检查更新」，随后是已最新 / 有更新及说明 / 错误，然后是「立即更新」。
+`ui-settings-general` 仅在该桥存在时注册通用设置项 `desktop-update`（order 90），因此普通 `dsh web` 不显示该行。该行是「检查更新」，随后是已最新 / 有更新及说明 / 错误，然后是「立即更新」。清单和安装包 HTTP 使用与 [`@deepseek-ai/dsh-http-proxy`](2026-08-16-http-proxy-fallback.md) 相同的直连再代理回退：`ureq` 先直连，再走 `DSH_PROXY_PORT` / `DSH_PROXY_URL` / `http-proxy.port`（默认 7897）上的 `http://127.0.0.1:{port}`。那是产品 HTTP，不是 `tool-web`，也不按 session 阶段门控。
 
 ## 考虑过的替代方案
 

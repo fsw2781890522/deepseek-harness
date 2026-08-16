@@ -12,7 +12,7 @@ Status: implemented
 
 `ui-conversation` 在 ChatView 内拥有一条 sticky prompt 小地图。它不是新的插件包、Session 事件、store 字段，也不是模型可见约定。
 
-当前已加载的每条 `user` Chat Node 在对话滚动容器左侧变成一根短横线，放在零高度的 sticky 槽里，位于居中 transcript 列左侧空隙中，距该列最多 64px（空隙变窄时偏移随之缩小）。steering、上下文和 assistant 行不进入该列表。该槽对 Chat 滚动宿主使用 `position: sticky`，因此短横线留在可见空隙里而 transcript 继续滚；在 `[data-conversation-scroll]` 下该宿主是对话列，单元测试里则是 ChatView 自己的 `.scroll`。悬停或聚焦打开截断预览卡（首行、其余正文、图片名），并用 `position: fixed`，以免对话列的 `overflow-x: hidden` 裁切它。预览卡使用主题 layer／label 别名（`--dsw-alias-bg-layer-2`、`--dsw-alias-label-primary` / `--dsw-alias-label-secondary`），而不是始终深色的 tooltip 底板，因此浅色和深色都能保持可读对比。点击对匹配的 `[data-chat-anchor-key]` 行调用 `scrollIntoView({ block: 'start' })`。高亮的短横线是行顶不高于阅读探测线（靠近滚动容器顶部）的最后一条用户行。钉在底部——打开时跳到底、实时跟随、或回到底部控件——由 `toBottom` 选中最后一条已加载用户 prompt，因为程序化写到底边不算读者输入，滚动监听否则会跳过视口探测。
+当前已加载的每条 `user` Chat Node 在对话滚动容器左侧变成一根短横线，放在零高度的 sticky 槽里，落在剩余左侧空隙中、距滚动容器左缘 24px（偏移为该空隙减 24px，下限 20px，以免窄空隙裁切）。steering、上下文和 assistant 行不进入该列表。该槽对 Chat 滚动宿主使用 `position: sticky`，因此短横线留在可见空隙里而 transcript 继续滚；在 `[data-conversation-scroll]` 下该宿主是对话列，单元测试里则是 ChatView 自己的 `.scroll`。悬停或聚焦打开截断预览卡（首行、其余正文、图片名），并用 `position: fixed`，以免对话列的 `overflow-x: hidden` 裁切它。预览卡使用主题 layer／label 别名（`--dsw-alias-bg-layer-2`、`--dsw-alias-label-primary` / `--dsw-alias-label-secondary`），而不是始终深色的 tooltip 底板，因此浅色和深色都能保持可读对比。点击对匹配的 `[data-chat-anchor-key]` 行调用 `scrollIntoView({ block: 'start' })`。高亮的短横线是行顶不高于阅读探测线（靠近滚动容器顶部）的最后一条用户行。钉在底部——打开时跳到底、实时跟随、或回到底部控件——由 `toBottom` 选中最后一条已加载用户 prompt，因为程序化写到底边不算读者输入，滚动监听否则会跳过视口探测。
 
 ## 考虑过的替代方案
 

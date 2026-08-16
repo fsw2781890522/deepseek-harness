@@ -14,7 +14,7 @@ The desktop construction repo (`dsh-desktop`) owns the update channel. Each buil
 
 The Tauri shell injects `window.__DSH_DESKTOP__` into every WebView document (splash and `http://127.0.0.1`). The object exposes `version`, `checkUpdate()`, and `installUpdate()`. Those map to `dsh_check_update` and `dsh_install_update`. Check compares the shell semver with `latest`. Install downloads the artifact the user was shown, verifies SHA-256, launches the NSIS installer silently (`/S`, last `/D=` the current install directory), and exits so the installer can replace the exe. User data stays in `~/.dsh`.
 
-`ui-settings-general` registers a General item `desktop-update` (order 90) only when that bridge exists, so ordinary `dsh web` does not show the row. The row is Check for updates / 检查更新, then current / available-with-notes / error, then Install update / 立即更新.
+`ui-settings-general` registers a General item `desktop-update` (order 90) only when that bridge exists, so ordinary `dsh web` does not show the row. The row is Check for updates / 检查更新, then current / available-with-notes / error, then Install update / 立即更新. Manifest and installer HTTP uses the same direct-then-proxy fallback as [`@deepseek-ai/dsh-http-proxy`](2026-08-16-http-proxy-fallback.md): `ureq` tries the destination, then `http://127.0.0.1:{port}` from `DSH_PROXY_PORT` / `DSH_PROXY_URL` / `http-proxy.port` (default 7897). That path is product HTTP, not `tool-web`, and is not gated on session phase.
 
 ## Alternatives considered
 

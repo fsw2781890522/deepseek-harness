@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-16-chat-prompt-minimap.md
-2026-08-16-chat-prompt-minimap.md: d78a5cd47b33058a0f2fc4027c3ecc99d8d8f019
-2026-08-16-chat-prompt-minimap.zh.md: 4574f5c42370956f98fda96107f72003e77f3397
+2026-08-16-chat-prompt-minimap.md: d9e529d9754d7b698612902cfcb51ea777c48dc2
+2026-08-16-chat-prompt-minimap.zh.md: 3a81632e6eafbae656807d75dd6cf98d15a53486
