@@ -185,7 +185,9 @@ export function ChatView({
   // Click-local busy: the Host page is async and Session.loadingOlder is
   // snapshot-batched, so the control must accept the click immediately.
   const [pagingBusy, setPagingBusy] = useState(false)
+  const [pagingQueued, setPagingQueued] = useState(false)
   const pagingLockRef = useRef(false)
+  const pagingQueuedRef = useRef(false)
   const olderBusy = loadingOlder || pagingBusy
   const selectedCallId = useStore(s => s.selection?.callId)
 
@@ -424,7 +426,15 @@ export function ChatView({
   }, [promptKeys])
 
   const loadOlderAnchored = (): void => {
-    if (olderBusy || pagingLockRef.current) return
+    // Session.loadOlder deliberately no-ops until the initial history window
+    // is open. Queue one early click and start it when open settles instead of
+    // making the reader repeat the gesture during the transient loading state.
+    if (olderBusy || pagingLockRef.current || pagingQueuedRef.current) return
+    if (openState !== 'open') {
+      pagingQueuedRef.current = true
+      setPagingQueued(true)
+      return
+    }
     pagingLockRef.current = true
     const local = listRef.current
     /* v8 ignore next -- ref-null guard: the paging button renders inside the list tree. */
@@ -444,6 +454,19 @@ export function ChatView({
       setPagingBusy(false)
     })
   }
+
+  useEffect(() => {
+    if (openState !== 'open' || !pagingQueuedRef.current || olderBusy) return
+    pagingQueuedRef.current = false
+    setPagingQueued(false)
+    loadOlderAnchored()
+  }, [openState, olderBusy])
+
+  useEffect(() => {
+    if (openState !== 'error') return
+    pagingQueuedRef.current = false
+    setPagingQueued(false)
+  }, [openState])
 
   return (
     <div className={css.root}>
@@ -476,8 +499,8 @@ export function ChatView({
             <div className={css.older}>
               <button
                 type="button"
-                disabled={olderBusy}
-                aria-busy={olderBusy || undefined}
+                disabled={olderBusy || pagingQueued}
+                aria-busy={olderBusy || pagingQueued || undefined}
                 aria-label={t('chat.loadOlder')}
                 onClick={loadOlderAnchored}
               >

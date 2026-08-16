@@ -16,7 +16,7 @@ const items: readonly PromptNavItem[] = [
   { key: 'u2', title: 'second', body: '', attachment: null, ariaLabel: 'second' },
 ]
 
-const oneItem: readonly PromptNavItem[] = [items[0]!]
+const oneItem: readonly PromptNavItem[] = [items[0]]
 
 describe('PromptNav', () => {
   it('renders one tick per prompt and jumps on click', () => {
@@ -45,7 +45,7 @@ describe('PromptNav', () => {
     expect(view.queryByRole('tooltip')).toBeNull()
   })
 
-  it('anchors the preview to the hovered dot and clears it after clicking', () => {
+  it('anchors the preview to the hovered dot and keeps it until the pointer leaves', () => {
     const onJump = vi.fn()
     const view = render(
       <PromptNav items={items} activeKey={null} onJump={onJump} t={t} />,
@@ -83,6 +83,8 @@ describe('PromptNav', () => {
 
     fireEvent.click(tick)
     expect(onJump).toHaveBeenCalledWith('u1')
+    expect(view.queryByRole('tooltip')).not.toBeNull()
+    fireEvent.mouseLeave(tick)
     expect(view.queryByRole('tooltip')).toBeNull()
   })
 
