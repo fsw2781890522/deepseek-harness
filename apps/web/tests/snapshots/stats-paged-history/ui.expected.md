@@ -7,6 +7,35 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "m1"
+  - button "m2"
+  - button "m3"
+  - button "m4"
+  - button "m5"
+  - button "m6"
+  - button "m7"
+  - button "m8"
+  - button "m9"
+  - button "m10"
+  - button "m11"
+  - button "m12"
+  - button "m13"
+  - button "m14"
+  - button "m15"
+  - button "m16"
+  - button "m17"
+  - button "m18"
+  - button "m19"
+  - button "m20"
+  - button "m21"
+  - button "m22"
+  - button "m23"
+  - button "m24"
+  - button "m25"
+  - button "m26"
+  - button "m27"
+  - button "m28"
 - text: m1 7/25 {{clock}}
 - button "Copy":
   - img

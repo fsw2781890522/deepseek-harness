@@ -210,6 +210,8 @@ function legacyContribution(raw: ChatConversationViewNode): LegacyContribution {
       }
     case 'turn-tail':
       return EMPTY_CONTRIBUTION
+    case 'assistant-reasoning':
+      return EMPTY_CONTRIBUTION
     default:
       return EMPTY_CONTRIBUTION
   }

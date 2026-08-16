@@ -3,7 +3,8 @@
  * `sidebar.settings` occupant — panel chrome, section navigation, and the
  * onboarding stage — and registers everything on the Settings pages that
  * belongs to no single feature: the trigger/header chrome content,
- * local-document action, General section, and `settings` dictionaries.
+ * local-document action, General section, the desktop update row when the
+ * Tauri shell injected `window.__DSH_DESKTOP__`, and `settings` dictionaries.
  * Feature-owned rows and sections stay with their features.
  * Export discipline: packages/client/AGENTS.md.
  */
@@ -26,6 +27,8 @@ import { GeneralSection } from './GeneralSection.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
 import { refreshDocumentIfLoaded, SettingsDocumentStore } from './settings-document-store.ts'
+import { DesktopUpdateRow } from './DesktopUpdateRow.tsx'
+import { desktopBridge } from './desktop-bridge.ts'
 import { en, zh, type SettingsKey } from './locales.ts'
 
 export type {
@@ -41,7 +44,7 @@ export type { SettingsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Shell chrome + shell-owned General section copy. */
+    /** Shell chrome, General copy, and the desktop update row. */
     settings: SettingsKey
   }
 }
@@ -175,4 +178,12 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
   }, GeneralSection))
+  if (desktopBridge() !== null) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item',
+      id: 'desktop-update',
+      order: 90,
+      locale: NS,
+    }, DesktopUpdateRow))
+  }
 }

@@ -3,6 +3,22 @@
   flex-direction: column;
 }
 
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stopped {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 18px;
+}
+
 .row {
   position: relative;
   overflow: hidden;

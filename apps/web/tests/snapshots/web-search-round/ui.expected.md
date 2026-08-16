@@ -9,6 +9,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Use web_search to search exactly \"DeepSeek Harness snapshot sear…"
 - text: Use web_search to search exactly "DeepSeek Harness snapshot search". Then reply exactly SEARCH_DONE and stop. {{clock}}
 - button "Copy":
   - img
@@ -16,10 +18,10 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- button "Search DeepSeek Harness snapshot search":
+- button "Processed {{duration}}":
   - img
   - img
-  - text: Search DeepSeek Harness snapshot search
+  - text: Processed {{duration}}
 - paragraph: SEARCH_DONE
 - button "Copy":
   - img

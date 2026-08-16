@@ -9,6 +9,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - 'button "Using ONE run_code program: run bash `echo CODE_ROUND_OK`, then r…"'
 - text: "Using ONE run_code program: run bash `echo CODE_ROUND_OK`, then read the file missing.txt catching its error in the program. Return an object with both outcomes. Then reply DONE and stop. {{clock}}"
 - button "Copy":
   - img
@@ -16,23 +18,10 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- 'button "Think The user wants me to write a single `run_code` program that:"':
+- button "Processed {{duration}}":
   - img
   - img
-  - text: "Think The user wants me to write a single `run_code` program that:"
-- button "Code Run bash echo and catch missing file read":
-  - img
-  - img
-  - text: Code Run bash echo and catch missing file read
-- img
-- text: Bash Echo CODE_ROUND_OK Failed
-- 'button "Read Error: cannot read \"{{cwd}}/workspace/missing.txt\": not found"':
-  - img
-  - text: "Read Error: cannot read \"{{cwd}}/workspace/missing.txt\": not found"
-- button "Think The program ran successfully. Let me now reply DONE as instructed.":
-  - img
-  - img
-  - text: Think The program ran successfully. Let me now reply DONE as instructed.
+  - text: Processed {{duration}}
 - paragraph: DONE
 - button "Copy":
   - img

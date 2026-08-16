@@ -676,19 +676,15 @@ export function fixtureUserPrompts(fixtureText: string): string[] {
 }
 
 /**
- * Seed a recorded session fixture into the scaffold's persistence root
- * through the REAL backend API (throwaway Context + SessionStore + JSONL
- * plugin — the semantic-checkpoint precedent), never raw file writes: no
- * knowledge of bucket hashing, filename encoding, or compression, and
- * malformed session events fail loud at seed time. The fixture's tokenized identity
- * ({{sessionId}}/{{cwd}}) is realized for this world before parsing.
- * @param scaffold - the target scaffold.
- * @param fixtureText - raw recorded session.jsonl contents.
- * @param id - the seeded session id (stable for deterministic goldens).
- * @param agentPreset - the preset the recorded session was composed from,
- *   for scenarios asserting what a resumed session reports running.
- * @returns the seeded id.
+ * JSON-string body of `value`, so a Windows path can replace a placeholder
+ * that already lives inside a JSON string.
+ * @param value - raw replacement.
+ * @returns escaped fragment without surrounding quotes.
  */
+function jsonStringFragment(value: string): string {
+  return JSON.stringify(value).slice(1, -1)
+}
+
 /**
  * Realize a recorded seed fixture against one scaffold: substitute the
  * `{{sessionId}}`/`{{cwd}}` placeholders and rewrite the recorded cwd to the
@@ -702,14 +698,28 @@ export function fixtureUserPrompts(fixtureText: string): string[] {
  */
 export function realizeSeedFixture(scaffold: WebScaffold, fixtureText: string, id: string): string {
   const realized = fixtureText
-    .split('{{sessionId}}').join(id)
-    .split('{{cwd}}').join(scaffold.workspaceCwd)
+    .split('{{sessionId}}').join(jsonStringFragment(id))
+    .split('{{cwd}}').join(jsonStringFragment(scaffold.workspaceCwd))
   const fixtureCwd = (JSON.parse(realized.split('\n', 1)[0]!) as { cwd?: string }).cwd
   return fixtureCwd === undefined
     ? realized
-    : realized.split(fixtureCwd).join(scaffold.workspaceCwd)
+    : realized.split(fixtureCwd).join(jsonStringFragment(scaffold.workspaceCwd))
 }
 
+/**
+ * Seed a recorded session fixture into the scaffold's persistence root
+ * through the REAL backend API (throwaway Context + SessionStore + JSONL
+ * plugin — the semantic-checkpoint precedent), never raw file writes: no
+ * knowledge of bucket hashing, filename encoding, or compression, and
+ * malformed session events fail loud at seed time. The fixture's tokenized identity
+ * ({{sessionId}}/{{cwd}}) is realized for this world before parsing.
+ * @param scaffold - the target scaffold.
+ * @param fixtureText - raw recorded session.jsonl contents.
+ * @param id - the seeded session id (stable for deterministic goldens).
+ * @param agentPreset - the preset the recorded session was composed from,
+ *   for scenarios asserting what a resumed session reports running.
+ * @returns the seeded id.
+ */
 export async function seedSession(
   scaffold: WebScaffold,
   fixtureText: string,
@@ -789,15 +799,25 @@ async function persistSeedSession(
 function normalizeAria(snapshot: string, workspaceCwd: string): string {
   // The session heading renders the workspace's basename, not the full
   // path, so both spellings must collapse to the token.
-  const base = workspaceCwd.split('/').pop()!
+  const slashCwd = workspaceCwd.replaceAll('\\', '/')
+  const escapedCwd = workspaceCwd.replaceAll('\\', '\\\\')
+  const base = slashCwd.split('/').pop()!
   return snapshot
     .split(workspaceCwd).join('{{cwd}}')
+    .split(escapedCwd).join('{{cwd}}')
+    .split(slashCwd).join('{{cwd}}')
     .split(base).join('{{workspace}}')
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '{{uuid}}')
-    // The optional space in `\d+m ?\d+s` covers both minute spellings: the
-    // stats line's compact `2m42s` and the message-chrome template's `2m 42s`.
+    // Compact `2m42s` / `2m 42s` and process-group `x h x m x s` (spaces
+    // before unit letters) all collapse to the same token.
     .replace(
-      /~\d+(?:y(?: \d+mo)?|mo(?: \d+d)?)|\b(?:\d+d(?: \d+h(?: \d+m \d+s)?)?|\d+h \d+m \d+s|\d+m ?\d+s|\d+(?:\.\d+)?s|\d+(?:\.\d+)?ms)\b/g,
+      new RegExp(
+        String.raw`~\d+(?:y(?: \d+mo)?|mo(?: \d+d)?)|` +
+          String.raw`\b(?:\d+d(?: \d+h(?: \d+m \d+s)?)?|\d+ h \d+ m \d+ s|` +
+          String.raw`\d+h \d+m \d+s|\d+ m \d+ s|\d+m ?\d+s|\d+ s|` +
+          String.raw`\d+(?:\.\d+)?s|\d+(?:\.\d+)?ms)\b`,
+        'g',
+      ),
       duration => duration.startsWith('~') ? duration : '{{duration}}',
     )
     .replace(

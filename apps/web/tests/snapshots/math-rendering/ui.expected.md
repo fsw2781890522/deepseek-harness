@@ -7,6 +7,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Render this mathematical proof."
 - text: Render this mathematical proof. {{clock}}
 - button "Copy":
   - img

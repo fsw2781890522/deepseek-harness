@@ -7,6 +7,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Render adjacent CJK strong emphasis."
 - text: Render adjacent CJK strong emphasis. {{clock}}
 - button "Copy":
   - img

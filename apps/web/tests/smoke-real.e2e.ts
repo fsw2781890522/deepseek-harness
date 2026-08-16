@@ -25,7 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
-import { REPO_ROOT, connectFreshWorkspace, newEnglishPage, probeFreePort, requireDist, saveFailureShot } from './support.ts'
+import { REPO_ROOT, connectFreshWorkspace, expandProcessedGroups, newEnglishPage, probeFreePort, requireDist, saveFailureShot } from './support.ts'
 
 const WEB_SURFACE_PROMPT = fileURLToPath(new URL('./snapshots/web-runtime-context/web-surface-prompt.expected.md', import.meta.url))
 
@@ -570,7 +570,7 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY || notReady.length > 0)('web smoke
     if (await projectRow.getAttribute('aria-expanded') === 'false') await projectRow.click()
     await Promise.all([
       sessionTree.getByText(durableTitle, { exact: true }).waitFor({ timeout: 10_000 }),
-      page.getByRole('navigation').getByText(durableTitle, { exact: true }).waitFor({ timeout: 10_000 }),
+      page.getByRole('navigation', { name: 'Session hierarchy' }).getByText(durableTitle, { exact: true }).waitFor({ timeout: 10_000 }),
     ])
     await waitForAssistantMarker(baseUrl, sessionId, ROUND_DONE_MARKER)
     await page.locator('p').filter({ hasText: ROUND_DONE_MARKER }).waitFor({ timeout: 10_000 })
@@ -597,7 +597,9 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY || notReady.length > 0)('web smoke
     // exact row: other clickable variants (for example Think disclosure)
     // may precede the tool call in document order.
     const toolRow = page.locator('[data-sample="bash"]')
-    await toolRow.waitFor({ timeout: 120_000 })
+    await page.locator('[data-sample="bash"], [data-chat-process-group]').first().waitFor({ timeout: 120_000 })
+    await expandProcessedGroups(page)
+    await toolRow.waitFor({ timeout: 15_000 })
     await screen(page, '08-bash-round')
     expect(await detailsTrack(page)).toBe(0)
     await toolRow.click()

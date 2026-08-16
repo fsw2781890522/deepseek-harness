@@ -18,7 +18,7 @@ import {
   captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
   launchWebScaffold, recordFixture, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
+import { collapseProcessedGroups, connectFreshWorkspace, expandProcessedGroups, newEnglishPage, saveFailureShot } from './support.ts'
 
 const FIXTURE = fileURLToPath(new URL('./snapshots/code-mode-round/session.jsonl', import.meta.url))
 const UI_EXPECTED = fileURLToPath(new URL('./snapshots/code-mode-round/ui.expected.md', import.meta.url))
@@ -103,6 +103,7 @@ describe('web e2e: Code Mode round renders nested sub-calls', () => {
   it.skipIf(MODE === 'record')('renders the code parent row with always-visible nested sub-rows', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-code-mode-rows'))
     await expect.poll(() => page.getByText('DONE', { exact: true }).count(), { timeout: 15_000 }).toBeGreaterThanOrEqual(1)
+    await expandProcessedGroups(page)
     // The parent run_code row wears the code variant with the model-authored
     // description as its summary (the presentCall contract).
     const codeRow = page.locator('[data-variant="code"]').first()
@@ -130,6 +131,7 @@ describe('web e2e: Code Mode round renders nested sub-calls', () => {
 
   it.skipIf(MODE === 'record')('matches the conversation aria golden with stable anchors', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-code-mode-aria'))
+    await collapseProcessedGroups(page)
     const snapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(UI_EXPECTED, snapshot, MODE)
   })

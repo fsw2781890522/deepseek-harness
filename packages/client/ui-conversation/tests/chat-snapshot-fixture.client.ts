@@ -5,6 +5,10 @@ import type {
   ToolCallBlock, TurnLocation,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { deriveTurnMetrics } from '../src/client/chat/turn-metrics.ts'
+import {
+  hasInterruptedReply, hasReasoningContent, hasReplyContent, reasoningBlocks,
+} from '../src/client/conversation-nodes/assistant-fold.ts'
+import { CHAT_SYNTHETIC_SEQ_OFFSETS } from '../src/client/conversation-nodes/common.ts'
 
 const EMPTY: readonly never[] = []
 
@@ -16,6 +20,9 @@ function nodeSource(node: ChatConversationViewNode): unknown {
   if (node.kind === 'assistant-step') {
     const data = node.data as ReturnType<typeof assistantData>
     return data.finalNode ?? data.blocks
+  }
+  if (node.kind === 'assistant-reasoning') {
+    return (node.data as { readonly blocks: unknown }).blocks
   }
   if (node.kind === 'tool-call') return (node.data as { readonly root: ToolCallBlock }).root
   if (node.kind === 'model-retry') return (node.data as { readonly current: unknown }).current
@@ -101,6 +108,70 @@ function assistantData(node: AssistantMessageNode) {
     time: node.time,
     finalNode: node,
   }
+}
+
+function assistantReasoningData(
+  node: Pick<AssistantMessageNode, 'turn' | 'step' | 'blocks' | 'time'> & {
+    readonly interrupted?: boolean
+  },
+  status: 'running' | 'settled' | 'interrupted',
+) {
+  const blocks = reasoningBlocks(node.blocks)
+  return {
+    status,
+    turn: node.turn,
+    step: node.step,
+    blocks,
+    time: node.time,
+    startTime: node.time,
+    endTime: node.time,
+  }
+}
+
+function assistantViewBase(
+  node: AssistantMessageNode,
+  turns: ReadonlyMap<number, TurnLocation>,
+) {
+  const turn = turns.get(node.turn)
+  return {
+    id: String(node.seq),
+    target: 'chat' as const,
+    location: turn === undefined
+      ? { kind: 'session' as const }
+      : { kind: 'turn' as const, turn },
+    visibility: 'visible' as const,
+  }
+}
+
+function assistantFixtureNodes(
+  node: AssistantMessageNode,
+  turns: ReadonlyMap<number, TurnLocation>,
+): ChatConversationViewNode[] {
+  const base = assistantViewBase(node, turns)
+  const nodes: ChatConversationViewNode[] = []
+  if (hasReasoningContent(node.blocks)) {
+    nodes.push({
+      ...base,
+      key: `fixture:assistant-reasoning:${node.seq}`,
+      kind: 'assistant-reasoning',
+      anchorSeq: node.seq + CHAT_SYNTHETIC_SEQ_OFFSETS.reasoningBeforeReply,
+      data: assistantReasoningData(
+        node,
+        node.interrupted === true ? 'interrupted' : 'settled',
+      ),
+    })
+  }
+  if (hasInterruptedReply(node.blocks, node.interrupted === true)
+    || !hasReasoningContent(node.blocks)) {
+    nodes.push({
+      ...base,
+      key: `fixture:assistant:${node.seq}`,
+      kind: 'assistant-step',
+      anchorSeq: node.seq,
+      data: assistantData(node),
+    })
+  }
+  return nodes
 }
 
 function settledNode(
@@ -193,26 +264,48 @@ export function chatSnapshotFixture(input: {
       }
     }
     if (node.kind === 'compaction' && linkedCompactions.has(node)) return []
+    if (node.kind === 'assistant') return assistantFixtureNodes(node, turns)
     return [settledNode(node, turns)]
   })
   if (legacy.partial !== null) {
     const turn = turns.get(legacy.partial.turn)
-    nodes.push({
-      key: `fixture:assistant:${legacy.partial.turn}:${legacy.partial.step}`,
-      id: `${legacy.partial.turn}:${legacy.partial.step}`,
-      target: 'chat',
-      kind: 'assistant-step',
-      anchorSeq: Number.MAX_SAFE_INTEGER - 1,
-      location: turn === undefined ? { kind: 'session' } : { kind: 'turn', turn },
-      visibility: 'visible',
-      data: {
-        status: 'running',
-        turn: legacy.partial.turn,
-        step: legacy.partial.step,
-        blocks: legacy.partial.blocks,
-        time: 0,
-      },
-    })
+    const location = turn === undefined ? { kind: 'session' as const } : { kind: 'turn' as const, turn }
+    const partial = legacy.partial
+    if (hasReasoningContent(partial.blocks)) {
+      nodes.push({
+        key: `fixture:assistant-reasoning:${partial.turn}:${partial.step}`,
+        id: `${partial.turn}:${partial.step}:reasoning`,
+        target: 'chat',
+        kind: 'assistant-reasoning',
+        anchorSeq: Number.MAX_SAFE_INTEGER - 1.05,
+        location,
+        visibility: 'visible',
+        data: assistantReasoningData({
+          turn: partial.turn,
+          step: partial.step,
+          blocks: partial.blocks,
+          time: 0,
+        }, hasReplyContent(partial.blocks) ? 'settled' : 'running'),
+      })
+    }
+    if (hasReplyContent(partial.blocks) || !hasReasoningContent(partial.blocks)) {
+      nodes.push({
+        key: `fixture:assistant:${partial.turn}:${partial.step}`,
+        id: `${partial.turn}:${partial.step}`,
+        target: 'chat',
+        kind: 'assistant-step',
+        anchorSeq: Number.MAX_SAFE_INTEGER - 1,
+        location,
+        visibility: 'visible',
+        data: {
+          status: 'running',
+          turn: partial.turn,
+          step: partial.step,
+          blocks: partial.blocks,
+          time: 0,
+        },
+      })
+    }
   }
   for (const call of legacy.runningCalls) {
     const turn = turns.get(call.turn)

@@ -1,8 +1,7 @@
-// AssistantMarkdown: renders assistant blocks in order — markdown text body,
-// reasoning as the figma Think summary row (expand = indented gray text),
-// other-block JSON fallback. Tool-call heads are NOT rendered here: the chat
-// view groups them into tool rows through its keyed toolview slot (figma
-// step-summary flow). Shared by finalized nodes and the streaming partial;
+// AssistantMarkdown: renders assistant reply blocks in order — markdown text
+// body, images, other-block JSON fallback. Think rows are a sibling
+// `assistant-reasoning` Chat Node; tool-call heads dispatch through the
+// keyed toolview slot. Shared by finalized nodes and the streaming partial;
 // the turn-level loading dots live in the chat view's tail, not here.
 // Finalized content (text) nodes append IconActions once their turn ends
 // (`time` is omitted for mid-turn narration and while the turn still runs);
@@ -17,7 +16,6 @@ import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives
 import { ImageGallery, type ImageLoader } from '@deepseek-ai/dsh-client-ui-attachment'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { messageImageLabels } from '../image-labels.ts'
-import { ReasoningRow } from './ReasoningRow.tsx'
 import css from './AssistantMarkdown.module.css'
 
 export interface AssistantMarkdownProps {
@@ -33,7 +31,7 @@ export interface AssistantMarkdownProps {
   t: ChatViewSlotProps['t']
 }
 
-/** Reasoning block as the Think variant summary row (figma 39:28304). */
+/** Reply blocks for one Assistant step. Think and Tool heads render as sibling Chat Nodes. */
 export const AssistantMarkdown = memo(function AssistantMarkdown({
   blocks, streaming, interrupted, loadImage, mentions, t,
 }: AssistantMarkdownProps) {
@@ -41,13 +39,12 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
   // Stable per locale revision (t identity changes on switch): a fresh object
   // per render would rebuild MarkdownText's component table every chunk.
   const codeLabels = useMemo(() => ({ copyLabel: t('copy'), copiedLabel: t('copied') }), [t])
-  const last = blocks.length - 1
-  // Tool-call heads render as tool rows in the chat view's grouping pass, so
-  // a node that is only those heads (or empty) would paint an empty root
-  // between tool groups — skip the shell unless something visible remains.
+  // Think and Tool heads render as sibling Chat Nodes, so a reply that is
+  // only those blocks (or empty) would paint an empty root — skip the shell
+  // unless reply material or an interrupted marker remains.
   const hasVisible = streaming
     || interrupted === true
-    || blocks.some(block => block.kind !== 'tool-call')
+    || blocks.some(block => block.kind !== 'tool-call' && block.kind !== 'reasoning')
   if (!hasVisible) return null
   const rendered: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
@@ -66,7 +63,6 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
         )
         break
       case 'reasoning':
-        rendered.push(<ReasoningRow key={i} text={block.text} running={streaming && i === last} t={t} />)
         break
       case 'image': {
         // Consecutive image blocks share one gallery so several images tile
