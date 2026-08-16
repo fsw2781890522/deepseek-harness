@@ -9,6 +9,9 @@ import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/d
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
 import { DesktopUpdateRow } from '../src/client/DesktopUpdateRow.tsx'
+import { ProxyPortRow } from '../src/client/ProxyPortRow.tsx'
+import type { ProxyPortRowInjected } from '../src/client/ProxyPortRow.tsx'
+import { createProxyPortStore } from '../src/client/proxy-port-store.ts'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from '../src/client/SettingsDocumentAction.tsx'
@@ -200,6 +203,45 @@ describe('ui-settings-general apply', () => {
     b.locale.setLocale('en')
     expect(resolveSlotLabel(generalEntry(b.slots)!.options.label)).toBe('General')
     b.locale.setLocale('zh')
+  })
+
+  it('registers the proxy port row when settingsScope is present', async () => {
+    const b = await bench()
+    declare(b.slots)
+    const host = {
+      getSnapshot: () => ({
+        status: 'loading' as const,
+        value: undefined,
+        base: undefined,
+        user: undefined,
+        revision: undefined,
+        writable: false,
+        mode: 'host' as const,
+      }),
+      subscribe: (listener: () => void) => {
+        listener()
+        return () => {}
+      },
+      set: vi.fn(async () => {}),
+      unset: vi.fn(async () => {}),
+    }
+    b.ctx.provide('settingsScope', { bind: () => host })
+    const fiber = b.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    await vi.waitFor(() => {
+      expect(b.slots.entries('settings.general.item')[0]?.component).toBe(ProxyPortRow)
+    })
+    const entry = b.slots.entries('settings.general.item')[0]!
+    expect(entry.options).toMatchObject({ id: 'proxy-port', order: 80 })
+    const handle = entry.store as ReturnType<typeof createProxyPortStore>
+    const instance = handle.create()
+    const face = (entry.inject as unknown as (a: typeof instance.actions) => ProxyPortRowInjected)(
+      instance.actions,
+    )
+    face.setPort(8118)
+    expect(host.set).toHaveBeenCalledWith('port', 8118)
+    await fiber.dispose()
+    expect(b.slots.entries('settings.general.item')).toEqual([])
   })
 
   it('registers the desktop update row only when the Tauri bridge is present', async () => {

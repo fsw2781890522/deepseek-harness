@@ -873,6 +873,22 @@ export interface Config {
 
 来源：[`packages/host/webserver/src/index.ts:59`](../packages/host/webserver/src/index.ts)
 
+<a id="deepseek-aidsh-http-proxy"></a>
+
+## `@deepseek-ai/dsh-http-proxy`
+
+```ts config-catalog
+/** Plugin config. Invalid values fail plugin load. */
+export interface Config {
+  /** Composition default for {@link HttpProxySettings.port} when settings has no user layer. */
+  port?: number
+  /** Direct-attempt abort budget in milliseconds before the proxy retry. */
+  directTimeoutMs?: number
+}
+```
+
+来源：[`packages/boot/http-proxy/src/index.ts:43`](../packages/boot/http-proxy/src/index.ts)
+
 <a id="deepseek-aidsh-invariants"></a>
 
 ## `@deepseek-ai/dsh-invariants`

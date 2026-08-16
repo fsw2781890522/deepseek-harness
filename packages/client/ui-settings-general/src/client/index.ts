@@ -3,14 +3,14 @@
  * `sidebar.settings` occupant — panel chrome, section navigation, and the
  * onboarding stage — and registers everything on the Settings pages that
  * belongs to no single feature: the trigger/header chrome content,
- * local-document action, General section, the desktop update row when the
- * Tauri shell injected `window.__DSH_DESKTOP__`, and `settings` dictionaries.
- * Feature-owned rows and sections stay with their features.
- * Export discipline: packages/client/AGENTS.md.
+ * local-document action, General section, the process HTTP proxy-port row,
+ * the desktop update row when the Tauri shell injected `window.__DSH_DESKTOP__`,
+ * and `settings` dictionaries. Feature-owned rows and sections stay with their
+ * features. Export discipline: packages/client/AGENTS.md.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+import { resolveSlotLabel, type BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: the settings slot declarations plus the ctx.settingsScope Context
 // merge. Cross-plugin collaboration goes through the service, never a value
 // import (client bundle purity gate).
@@ -28,7 +28,17 @@ import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.ts
 import { SettingsDocumentStore } from './settings-document-store.ts'
 import { DesktopUpdateRow } from './DesktopUpdateRow.tsx'
 import { desktopBridge } from './desktop-bridge.ts'
+import { ProxyPortRow } from './ProxyPortRow.tsx'
+import type { ProxyPortRowInjected } from './ProxyPortRow.tsx'
+import { createProxyPortStore } from './proxy-port-store.ts'
+import { DEFAULT_PROXY_PORT, HTTP_PROXY_SETTINGS_NAMESPACE } from './proxy-port.ts'
 import { en, zh, type SettingsKey } from './locales.ts'
+
+/** Durable `http-proxy` section mirrored by the General Proxy port row. */
+interface HttpProxySettings {
+  /** Local HTTP proxy TCP port. */
+  port: number
+}
 
 export type {
   CloseLabelProps, HeaderContentProps, TriggerContentProps,
@@ -43,7 +53,7 @@ export type { SettingsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Shell chrome, General copy, and the desktop update row. */
+    /** Shell chrome, General copy, proxy-port row, and the desktop update row. */
     settings: SettingsKey
   }
 }
@@ -59,8 +69,8 @@ const NS = 'settings'
 export const inject = ['slots', 'locale', 'connection', 'settingsScope']
 
 /**
- * Register the `settings` dictionaries, the chrome content, and the General
- * section, each once its slot declaration is on the ledger.
+ * Register the `settings` dictionaries, the chrome content, the General
+ * section, and the ownerless Proxy port row once `settingsScope` exists.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -177,6 +187,35 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
   }, GeneralSection))
+  ctx.inject(['settingsScope'], (scoped) => {
+    const host = scoped.settingsScope.bind<HttpProxySettings>({
+      namespace: HTTP_PROXY_SETTINGS_NAMESPACE,
+    })
+    const store = createProxyPortStore()
+    let bound: BoundActions<typeof store> | undefined
+    let generation = 0
+    const sync = (): void => {
+      generation += 1
+      const snap = host.getSnapshot()
+      bound?.sync(snap.value?.port ?? DEFAULT_PROXY_PORT, snap.writable, generation)
+    }
+    scoped.effect(() => host.subscribe(sync), 'ui-settings-general: http-proxy port')
+    const injected = (actions: BoundActions<typeof store>): ProxyPortRowInjected => {
+      bound = actions
+      sync()
+      return {
+        setPort: (port) => { void host.set('port', port) },
+      }
+    }
+    scoped.slots.inject('settings.general.item', () => scoped.slots.register({
+      name: 'settings.general.item',
+      id: 'proxy-port',
+      order: 80,
+      store,
+      locale: NS,
+      inject: injected,
+    }, ProxyPortRow))
+  })
   if (desktopBridge() !== null) {
     ctx.slots.inject('settings.general.item', () => ctx.slots.register({
       name: 'settings.general.item',

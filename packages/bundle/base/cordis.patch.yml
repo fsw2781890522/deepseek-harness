@@ -78,6 +78,12 @@
     - id: settings
       name: '@deepseek-ai/dsh-settings-file'
 
+    # Process HTTP: direct-first, then a local HTTP proxy. Owns no tools;
+    # agent tool enablement stays with the active preset scheduler. Check for
+    # updates and other harness fetch calls use this wrapper, not tool-web.
+    - id: http-proxy
+      name: '@deepseek-ai/dsh-http-proxy'
+
     # Credential sources: inherited environment over the managed
     # `$DSH_HOME/.credentials.yaml`, with project and user `.env` fallbacks.
     # Adapters resolve references per request; the Models page writes only the

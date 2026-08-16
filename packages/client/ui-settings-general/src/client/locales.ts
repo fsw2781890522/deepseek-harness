@@ -1,4 +1,4 @@
-/** Shell chrome, General-nav, and desktop-update dictionaries; feature rows own their copy. */
+/** Shell chrome, General-nav, proxy-port, and desktop-update dictionaries; feature rows own their copy. */
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
@@ -8,6 +8,9 @@ export const zh = {
   'openDocument': '打开配置文件',
   'openDocument.error': '无法打开配置文件',
   'general.nav': '通用设置',
+  'proxy.title': '代理端口',
+  'proxy.description': '直连失败时改走本机 HTTP 代理。用于应用联网（含检查更新），不改变智能体工具是否可用。',
+  'proxy.invalid': '请输入 1 到 65535 之间的端口',
   'update.title': '检查更新',
   'update.check': '检查更新',
   'update.checking': '正在检查…',
@@ -31,6 +34,9 @@ export const en = {
   'openDocument': 'Open configuration file',
   'openDocument.error': 'Could not open configuration file',
   'general.nav': 'General',
+  'proxy.title': 'Proxy port',
+  'proxy.description': 'After a direct connection fails, retry through this local HTTP proxy. Applies to app HTTP, including Check for updates, and does not change which agent tools are available.',
+  'proxy.invalid': 'Enter a port between 1 and 65535',
   'update.title': 'Check for updates',
   'update.check': 'Check for updates',
   'update.checking': 'Checking…',
