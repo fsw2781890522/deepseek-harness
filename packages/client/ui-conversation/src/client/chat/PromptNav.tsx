@@ -74,11 +74,12 @@ export function PromptNav({ items, activeKey, onJump, t }: PromptNavProps) {
                 triggers.current.focus = false
                 hide()
               }}
-              onClick={() => {
-                triggers.current.hover = false
-                triggers.current.focus = false
-                setPreview(null)
+              onClick={(event) => {
                 onJump(item.key)
+                // A pointer click may focus the button. Clear that focus after
+                // jumping so the preview remains governed by pointer hover:
+                // it stays visible over the dot and disappears on mouse leave.
+                event.currentTarget.blur()
               }}
             />
           ))}

@@ -35,6 +35,25 @@ describe('groupChatFlow', () => {
     ])
   })
 
+  it('drops a leading process run before the first user prompt but keeps later groups', () => {
+    expect(groupChatFlow(['r', 't', 'u', 'w', 'a'], kindOf, true)).toEqual([
+      { type: 'node', key: 'u' },
+      { type: 'group', keys: ['w'] },
+      { type: 'node', key: 'a' },
+    ])
+  })
+
+  it('suppresses the personal reasoning-collapse marker but keeps core process groups', () => {
+    expect(groupChatFlow(['u', 'rc', 'r', 't', 'a'], key => ({
+      ...kinds,
+      rc: 'reasoning-collapse',
+    }[key]), true)).toEqual([
+      { type: 'node', key: 'u' },
+      { type: 'group', keys: ['r', 't'] },
+      { type: 'node', key: 'a' },
+    ])
+  })
+
   it('treats unknown keys as ordinary rows', () => {
     expect(groupChatFlow(['missing', 'r'], kindOf, true)).toEqual([
       { type: 'node', key: 'missing' },

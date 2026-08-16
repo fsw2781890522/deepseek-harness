@@ -1417,6 +1417,29 @@ describe('ChatView', () => {
     expect(h.loadOlder).not.toHaveBeenCalled()
   })
 
+  it('queues one early older-page click until the history window is open', async () => {
+    const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true, openState: 'loading' })
+    const view = render(<h.ChatView {...h.props} />)
+    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(h.loadOlder).not.toHaveBeenCalled()
+    expect(button.disabled).toBe(true)
+
+    act(() => { h.set({ openState: 'open' }) })
+    expect(h.loadOlder).toHaveBeenCalledOnce()
+    await act(async () => {})
+    expect(button.disabled).toBe(false)
+  })
+
+  it('does not render an orphan processed group before the first user prompt', () => {
+    const h = makeHarness({ nodes: [toolResult(1, 'orphan'), user(2, 'prompt')] })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('prompt')).toBeTruthy()
+    expect(view.queryByText(/已处理/)).toBeNull()
+  })
+
   it('shows open error and loading states', () => {
     const h = makeHarness({
       openState: 'error',
