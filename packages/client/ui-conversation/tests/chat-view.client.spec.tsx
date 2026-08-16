@@ -1289,7 +1289,7 @@ describe('ChatView', () => {
     const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true })
     h.loadOlder.mockImplementation(() => new Promise<void>((resolve) => { settle = resolve }))
     const view = render(<h.ChatView {...h.props} />)
-    const button = view.getByRole<HTMLButtonElement>('button', { name: '加载更早' })
+    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
     act(() => {
       button.click()
       button.click()
@@ -1307,7 +1307,7 @@ describe('ChatView', () => {
   it('keeps the paging control busy from session loadingOlder without a second click', () => {
     const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true, loadingOlder: true })
     const view = render(<h.ChatView {...h.props} />)
-    const button = view.getByRole<HTMLButtonElement>('button', { name: '加载更早' })
+    const button = view.getByRole('button', { name: '加载更早' }) as HTMLButtonElement
     expect(button.disabled).toBe(true)
     expect(button.textContent).toContain('加载中')
     fireEvent.click(button)

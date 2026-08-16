@@ -50,7 +50,7 @@ export function ProxyPortRow({ t, setPort, useStore }: ProxyPortRowComponentProp
         {invalid ? <div className={css.error}>{t('proxy.invalid')}</div> : null}
       </div>
       <Input
-        className={css.input}
+        className={css.input ?? ''}
         id="dsh-proxy-port"
         name="proxy-port"
         inputMode="numeric"
