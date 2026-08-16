@@ -20,6 +20,9 @@
      content + 32px at every width. Declared on the root because the
      transcript and the composer seat are sibling subtrees. */
   --dsh-chat-content-width: 748px;
+  /* Header left padding (20) + tabs left padding (8) + half of the 26px
+     button keeps the floating prompt capsule centered on 对话. */
+  --dsh-session-tab-center-x: calc(20px + 8px + 13px);
   --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
   --dsh-composer-side-clearance: 16px;
   --dsh-composer-dock-inset: 8px;

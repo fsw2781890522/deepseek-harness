@@ -1,5 +1,5 @@
-// Chat-flow prompt minimap: sticky ticks for loaded user messages, a
-// Codex-style hover card, and click-to-jump. ChatView owns scroll targeting.
+// Floating prompt minimap: round dots for loaded user messages, a Codex-style
+// hover card, and click-to-jump. ChatView owns scroll targeting.
 
 import { useCallback, useRef, useState } from 'react'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
@@ -19,27 +19,34 @@ interface PreviewPos {
   readonly y: number
 }
 
-/** Sticky prompt ticks for the Chat waterfall; hidden while the window has no user rows. */
+/** Floating prompt dots; hidden until the session has at least two user rows. */
 export function PromptNav({ items, activeKey, onJump, t }: PromptNavProps) {
   const [preview, setPreview] = useState<PreviewPos | null>(null)
   const triggers = useRef({ hover: false, focus: false })
 
   const show = useCallback((el: HTMLElement, key: string) => {
     const rect = el.getBoundingClientRect()
-    setPreview({ key, x: rect.right + 10, y: rect.top + rect.height / 2 })
+    const shell = el.closest<HTMLElement>('[data-chat-prompt-nav-shell]')
+    const shellRect = shell?.getBoundingClientRect()
+    if (shellRect === undefined) return
+    setPreview({
+      key,
+      x: rect.right - shellRect.left + 10,
+      y: rect.top - shellRect.top + rect.height / 2,
+    })
   }, [])
 
   const hide = useCallback(() => {
     if (!triggers.current.hover && !triggers.current.focus) setPreview(null)
   }, [])
 
-  if (items.length === 0) return null
+  if (items.length < 2) return null
   const previewItem = preview === null
     ? undefined
     : items.find(item => item.key === preview.key)
 
   return (
-    <div className={css.slot}>
+    <div className={css.slot} data-chat-prompt-nav-shell="">
       <nav className={css.nav} data-chat-prompt-nav="" aria-label={t('chat.promptNav')}>
         <div className={css.list}>
           {items.map(item => (
@@ -67,7 +74,12 @@ export function PromptNav({ items, activeKey, onJump, t }: PromptNavProps) {
                 triggers.current.focus = false
                 hide()
               }}
-              onClick={() => { onJump(item.key) }}
+              onClick={() => {
+                triggers.current.hover = false
+                triggers.current.focus = false
+                setPreview(null)
+                onJump(item.key)
+              }}
             />
           ))}
         </div>

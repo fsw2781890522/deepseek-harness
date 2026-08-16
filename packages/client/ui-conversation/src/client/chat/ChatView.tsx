@@ -447,24 +447,24 @@ export function ChatView({
 
   return (
     <div className={css.root}>
+      <PromptNav
+        items={promptItems}
+        activeKey={activePromptKey}
+        t={t}
+        onJump={(key) => {
+          const local = listRef.current
+          /* v8 ignore next -- ref-null guard: ticks only render alongside the mounted list. */
+          if (local === null) return
+          const row = anchorElement(local, key)
+          if (row === null) return
+          atBottomRef.current = false
+          setAtBottom(false)
+          activePromptKeyRef.current = key
+          setActivePromptKey(key)
+          row.scrollIntoView({ block: 'start', inline: 'nearest' })
+        }}
+      />
       <div ref={listRef} className={css.scroll}>
-        <PromptNav
-          items={promptItems}
-          activeKey={activePromptKey}
-          t={t}
-          onJump={(key) => {
-            const local = listRef.current
-            /* v8 ignore next -- ref-null guard: ticks only render alongside the mounted list. */
-            if (local === null) return
-            const row = anchorElement(local, key)
-            if (row === null) return
-            atBottomRef.current = false
-            setAtBottom(false)
-            activePromptKeyRef.current = key
-            setActivePromptKey(key)
-            row.scrollIntoView({ block: 'start', inline: 'nearest' })
-          }}
-        />
         <div ref={columnRef} className={css.column} data-chat-flow="">
           {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
           {openState === 'error' && openError !== null && (
