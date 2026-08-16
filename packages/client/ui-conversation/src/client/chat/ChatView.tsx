@@ -1,6 +1,9 @@
 // ChatView: the default conversation view — one stable keyed parent list over
 // final business Nodes, plus paging, pending steering and bottom-follow.
-// Each row dispatches through 'conversation.chat.node'; ui-tool owns the
+// Consecutive Think, Tool, and workflow rows collapse into a process group
+// once a later reply (or a finished Session) seals the run. A sticky prompt
+// minimap on the left of the waterfall lists loaded user messages. Each
+// remaining row dispatches through 'conversation.chat.node'; ui-tool owns the
 // tool-call renderer and its recursive root/subcall composition.
 //
 // Scroll: when nested under `[data-conversation-scroll]` (active conversation
@@ -19,6 +22,10 @@ import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
 import { formatRunDuration } from './message-chrome.ts'
+import { groupChatFlow } from './process-flow.ts'
+import { ProcessGroup } from './ProcessGroup.tsx'
+import { PromptNav } from './PromptNav.tsx'
+import { promptNavItems, resolveActivePromptKey } from './prompt-nav.ts'
 import css from './ChatView.module.css'
 
 const FOLLOW_THRESHOLD = 24
@@ -95,6 +102,23 @@ function scrollPosition(list: HTMLElement, scrollport: HTMLElement): ChatScrollP
   }
 }
 
+/** Last user prompt whose row has crossed the reading probe, or the first. */
+function activePromptFromViewport(
+  list: HTMLElement,
+  scrollport: HTMLElement,
+  keys: readonly string[],
+): string | null {
+  const viewport = scrollport.getBoundingClientRect()
+  const composer = scrollport.querySelector<HTMLElement>('[data-composer-seat]')
+  const visibleBottom = composer?.getBoundingClientRect().top ?? viewport.bottom
+  const height = Math.max(0, visibleBottom - viewport.top)
+  const probeY = viewport.top + Math.min(48, height * 0.2)
+  return resolveActivePromptKey(keys, (key) => {
+    const row = anchorElement(list, key)
+    return row === null ? null : row.getBoundingClientRect().top
+  }, probeY)
+}
+
 function runningTurnStartTime(timeline: ConversationTimelineSnapshot): number | null {
   let latest: number | null = null
   for (const turn of timeline.turns.values()) {
@@ -158,6 +182,11 @@ export function ChatView({
   const openError = useSession(s => s.openError)
   const hasMore = useSession(s => s.hasMore)
   const loadingOlder = useSession(s => s.loadingOlder)
+  // Click-local busy: the Host page is async and Session.loadingOlder is
+  // snapshot-batched, so the control must accept the click immediately.
+  const [pagingBusy, setPagingBusy] = useState(false)
+  const pagingLockRef = useRef(false)
+  const olderBusy = loadingOlder || pagingBusy
   const selectedCallId = useStore(s => s.selection?.callId)
 
   const pendingSteering = useMemo(
@@ -165,6 +194,19 @@ export function ChatView({
     [inbox],
   )
   const runningTurnStart = useMemo(() => runningTurnStartTime(timeline), [timeline])
+  const flowItems = useMemo(
+    () => groupChatFlow(order, key => nodeStore.get(key)?.kind, !running),
+    [order, nodeStore, running],
+  )
+  const promptItems = useMemo(
+    () => promptNavItems(order, key => nodeStore.get(key), {
+      empty: t('chat.promptNav.empty'),
+      image: t('image.label'),
+      images: count => t('chat.promptNav.images', { count }),
+    }),
+    [order, nodeStore, t],
+  )
+  const promptKeys = useMemo(() => promptItems.map(item => item.key), [promptItems])
 
   const listRef = useRef<HTMLDivElement | null>(null)
   const columnRef = useRef<HTMLDivElement | null>(null)
@@ -183,6 +225,10 @@ export function ChatView({
    *  scroll-driven at-bottom chrome re-render (which would snap inertial
    *  scrolls the rest of the way to the floor). */
   const followSigRef = useRef<string | null>(null)
+  const promptKeysRef = useRef(promptKeys)
+  promptKeysRef.current = promptKeys
+  const activePromptKeyRef = useRef<string | null>(null)
+  const [activePromptKey, setActivePromptKey] = useState<string | null>(null)
 
   const firstKey = order[0]
   const firstSeq = firstKey === undefined ? null : nodeStore.get(firstKey)?.anchorSeq ?? null
@@ -198,6 +244,14 @@ export function ChatView({
     atBottomRef.current = true
     setAtBottom(true)
     chatScroll.save(null)
+    // Programmatic floor writes are not reader input, so onScroll will not
+    // run the viewport spy. Pinning to the bottom means the last loaded
+    // user prompt is the highlighted tick.
+    const next = promptKeysRef.current.at(-1) ?? null
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
   }
 
   useLayoutEffect(() => {
@@ -296,6 +350,14 @@ export function ChatView({
     if (isAtBottom) chatScroll.save(null)
     else if (position !== null) chatScroll.save(position)
     observedTopRef.current = el.scrollTop
+    const keys = promptKeysRef.current
+    const next = isAtBottom
+      ? keys.at(-1) ?? null
+      : activePromptFromViewport(local, el, keys)
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
   }
 
   // Bind the scroll listener on the resolved scrollport once per mount;
@@ -346,7 +408,24 @@ export function ChatView({
     if (!loadingOlder) anchorRef.current = null
   }, [loadingOlder])
 
+  useLayoutEffect(() => {
+    const local = listRef.current
+    /* v8 ignore next -- ref-null guard: React attaches the ref before layout effects run. */
+    if (local === null) return
+    const keys = promptKeysRef.current
+    const el = scrollerOf(local)
+    const next = atBottomRef.current
+      ? keys.at(-1) ?? null
+      : activePromptFromViewport(local, el, keys)
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
+  }, [promptKeys])
+
   const loadOlderAnchored = (): void => {
+    if (olderBusy || pagingLockRef.current) return
+    pagingLockRef.current = true
     const local = listRef.current
     /* v8 ignore next -- ref-null guard: the paging button renders inside the list tree. */
     if (local !== null) {
@@ -359,12 +438,33 @@ export function ChatView({
         }
       }
     }
-    loadOlder()
+    setPagingBusy(true)
+    void Promise.resolve(loadOlder()).finally(() => {
+      pagingLockRef.current = false
+      setPagingBusy(false)
+    })
   }
 
   return (
     <div className={css.root}>
       <div ref={listRef} className={css.scroll}>
+        <PromptNav
+          items={promptItems}
+          activeKey={activePromptKey}
+          t={t}
+          onJump={(key) => {
+            const local = listRef.current
+            /* v8 ignore next -- ref-null guard: ticks only render alongside the mounted list. */
+            if (local === null) return
+            const row = anchorElement(local, key)
+            if (row === null) return
+            atBottomRef.current = false
+            setAtBottom(false)
+            activePromptKeyRef.current = key
+            setActivePromptKey(key)
+            row.scrollIntoView({ block: 'start', inline: 'nearest' })
+          }}
+        />
         <div ref={columnRef} className={css.column} data-chat-flow="">
           {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
           {openState === 'error' && openError !== null && (
@@ -374,27 +474,51 @@ export function ChatView({
           )}
           {hasMore && (
             <div className={css.older}>
-              <button type="button" disabled={loadingOlder} onClick={loadOlderAnchored}>
-                {loadingOlder ? t('loading') : t('chat.loadOlder')}
+              <button
+                type="button"
+                disabled={olderBusy}
+                aria-busy={olderBusy || undefined}
+                aria-label={t('chat.loadOlder')}
+                onClick={loadOlderAnchored}
+              >
+                {olderBusy && <span className={css.olderSpinner} aria-hidden />}
+                {olderBusy ? t('loading') : t('chat.loadOlder')}
               </button>
             </div>
           )}
-          {order.map(nodeKey => (
-            <ChatNodeSeat
-              key={nodeKey}
-              nodeKey={nodeKey}
-              useSession={useSession}
-              selectedCallId={selectedCallId}
-              cwd={cwd}
-              openFile={openFile}
-              inspectCall={inspectCall}
-              forkAt={forkAt}
-              loadImage={loadImage}
-              fileMentions={fileMentions}
-              renderSlot={renderSlot}
-              t={t}
-            />
-          ))}
+          {flowItems.map(item => item.type === 'group'
+            ? (
+              <ProcessGroup
+                key={`process:${item.keys[0]}:${item.keys.at(-1)}`}
+                keys={item.keys}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={openFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                loadImage={loadImage}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            )
+            : (
+              <ChatNodeSeat
+                key={item.key}
+                nodeKey={item.key}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={openFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                loadImage={loadImage}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            ))}
           {/* No pending placeholders: questions (ui-user-questions) and approvals
               (ApprovalPanel) both take over the composer, so a flow card would
               double-render the same wait. */}

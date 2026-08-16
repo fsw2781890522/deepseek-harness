@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Branch tails the acceptance specs do not reach: the node-half apply
-// without a settings service and AssistantMarkdown reasoning/unknown block arms.
+// without a settings service and AssistantMarkdown unknown-block arms.
 
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -21,7 +21,7 @@ describe('tails', () => {
     expect(() => { nodeApply(new Context()) }).not.toThrow()
   })
 
-  it('AssistantMarkdown renders reasoning as a Think row and unknown blocks as JSON fallback', () => {
+  it('AssistantMarkdown skips Think and tool heads, and renders unknown blocks as JSON fallback', () => {
     const view = render(
       <AssistantMarkdown
         t={t}
@@ -33,8 +33,7 @@ describe('tails', () => {
         streaming
       />,
     )
-    expect(view.getByText('Think')).toBeTruthy()
-    expect(view.getByText('thinking hard')).toBeTruthy()
+    expect(view.queryByText('Think')).toBeNull()
     expect(view.getByText(/未知内容块/)).toBeTruthy()
     const stopped = render(
       <AssistantMarkdown t={t} blocks={[{ kind: 'text', text: 'partial words' }]} streaming={false} interrupted />,
@@ -42,9 +41,8 @@ describe('tails', () => {
     expect(stopped.getByText('已停止')).toBeTruthy()
   })
 
-  it('AssistantMarkdown skips the root shell when only tool-call heads remain', () => {
-    // Tool heads are drawn by ChatView's tool groups; an empty root between
-    // groups is layout noise (no text, no pulse, no interrupted marker).
+  it('AssistantMarkdown skips the root shell when only Think or tool-call heads remain', () => {
+    // Think and Tool heads are sibling Chat Nodes; an empty reply root is layout noise.
     const empty = render(
       <AssistantMarkdown
         t={t}
@@ -53,6 +51,14 @@ describe('tails', () => {
       />,
     )
     expect(empty.container.firstChild).toBeNull()
+    const thinkOnly = render(
+      <AssistantMarkdown
+        t={t}
+        blocks={[{ kind: 'reasoning', text: 'hidden from the reply' }]}
+        streaming={false}
+      />,
+    )
+    expect(thinkOnly.container.firstChild).toBeNull()
     const blank = render(<AssistantMarkdown t={t} blocks={[]} streaming={false} />)
     expect(blank.container.firstChild).toBeNull()
   })

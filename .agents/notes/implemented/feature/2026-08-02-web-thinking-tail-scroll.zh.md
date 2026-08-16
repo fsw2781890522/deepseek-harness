@@ -12,7 +12,7 @@ Web Think 行在结算与流式 block 中都把 reasoning 首行渲染成折叠�
 
 只有 reasoning block 是当前流式尾部、且仍处于折叠态的 Think 行会跟随实时输出。其摘要使用最新的非空行，而不是结算后的首行；已有单行摘要元素成为程序化横向滚动区，每次文本更新后钉到 `scrollWidth - clientWidth`。这里刻意直接赋值 `scrollLeft`，通过真实 delta 推进而不虚构独立的跑马灯速度：token 快则移动快，模型停顿则停止，短文本因滚动范围为零而保持静止。
 
-该行为由已有呈现组件拥有。`AssistantMarkdown` 只在 Think 行运行时选择最新行；`ToolRow` 已经拥有折叠／展开状态，因此由它决定摘要是否追随行内末端。不改变 session、wire、持久事件或模型可见约定。展开会移除折叠摘要，并让完整 reasoning 正文进入普通页面流。该行结算后恢复稳定首行，同时把摘要重置到左端。其他工具摘要与已结算 Think 行保留已有省略号行为。
+该行为由已有呈现组件拥有。`ReasoningRow`（由 `assistant-reasoning` Chat Node 挂载）只在 Think 行运行时选择最新行；`ToolRow` 已经拥有折叠／展开状态，因此由它决定摘要是否追随行内末端。不改变 session、wire、持久事件或模型可见约定。展开会移除折叠摘要，并让完整 reasoning 正文进入普通页面流。该行结算后恢复稳定首行，同时把摘要重置到左端。其他工具摘要与已结算 Think 行保留已有省略号行为。后续回复封口该 run 之后，ChatView 可能把 Think 行收进过程组展开项（[过程 run 折叠](2026-08-16-chat-process-run-collapse.md)）。
 
 ## 曾考虑的替代方案
 

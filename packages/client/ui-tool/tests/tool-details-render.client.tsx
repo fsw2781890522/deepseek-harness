@@ -1,4 +1,5 @@
 /** Test adapter for the production conversation.details.tool registration. */
+import { fireEvent, type RenderResult } from '@testing-library/react'
 import type {
   ChatConversationViewNode, ChatSnapshot, ConversationNode, RunningToolCall, SessionId,
 } from '@deepseek-ai/dsh-client-runtime/client'
@@ -59,5 +60,12 @@ export function renderToolDetails(t: TranslateNS<'conversation'>): DetailsSlotPr
     // recover the concrete owner selected by the adapter's fixed slot.
     const details = owner as unknown as DetailsToolOwnerProps
     return <ToolDetails block={details.block} cwd={details.cwd} t={t} />
+  }
+}
+
+/** Expand Chat process groups so settled Tool seats are mounted. */
+export function expandProcessedGroups(view: RenderResult): void {
+  for (const row of view.queryAllByRole('button', { name: /已处理|Processed/ })) {
+    fireEvent.click(row)
   }
 }

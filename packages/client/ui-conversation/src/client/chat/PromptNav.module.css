@@ -1,0 +1,131 @@
+/* Prompt minimap: a zero-height sticky slot so ticks stay in the Chat
+   scrollport gutter without growing scrollHeight. The nav sits in that
+   gutter, inset from the centered transcript column up to 64px and
+   shrinking with a narrow gutter so it does not clip. */
+
+.slot {
+  --dsh-prompt-nav-offset: clamp(
+    20px,
+    calc((100% - var(--dsh-chat-content-width)) / 2),
+    64px
+  );
+  position: sticky;
+  top: calc((100% - var(--dsh-composer-height, 0px)) * 0.5);
+  z-index: 6;
+  height: 0;
+  width: 0;
+  margin-left: max(0px, calc((100% - var(--dsh-chat-content-width)) / 2));
+  pointer-events: none;
+}
+
+.nav {
+  pointer-events: auto;
+  width: 20px;
+  max-height: calc(100vh - var(--dsh-composer-height, 0px) - 96px);
+  margin-left: calc(-1 * var(--dsh-prompt-nav-offset));
+  transform: translateY(-50%);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-height: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0;
+}
+
+.tick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-start;
+  width: 16px;
+  height: 10px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tick::after {
+  content: '';
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-label-dimmed);
+  transition:
+    width 120ms var(--ds-ease-in-out),
+    background 120ms var(--ds-ease-in-out);
+}
+
+.tick[data-active]::after {
+  width: 14px;
+  background: var(--dsw-alias-label-secondary);
+}
+
+.tick:hover::after,
+.tick:focus-visible::after {
+  width: 16px;
+  background: var(--dsw-alias-label-primary);
+}
+
+.tick:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick::after {
+    transition: none;
+  }
+}
+
+.preview {
+  position: fixed;
+  z-index: 100;
+  width: 280px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  box-shadow: var(--dsw-shadow-lv3);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.title {
+  font: var(--dsw-font-s-strong-14);
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.body {
+  margin-top: 4px;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-secondary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.attachment {
+  margin-top: 8px;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

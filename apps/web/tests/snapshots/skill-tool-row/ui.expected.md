@@ -7,6 +7,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Load the snapshot-skill skill with the skill tool, then reply DO…"
 - text: Load the snapshot-skill skill with the skill tool, then reply DONE. {{date}} {{clock}}
 - button "Copy":
   - img
@@ -18,6 +20,9 @@
   - img
   - img
   - text: Context injection skill-catalog
+- button "Processed {{duration}}" [expanded]:
+  - img
+  - text: Processed {{duration}}
 - button "Think Load the requested skill.":
   - img
   - img

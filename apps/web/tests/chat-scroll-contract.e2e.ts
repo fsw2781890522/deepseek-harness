@@ -20,7 +20,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot } from './support.ts'
+import { expandProcessedGroups, newEnglishPage, saveFailureShot } from './support.ts'
 
 const MODE = webSnapshotMode()
 const HISTORY_SESSION_ID = 'chat-scroll-history-e2e'
@@ -606,6 +606,7 @@ describe('web e2e: long Chat scroll contract', () => {
       await expectBottom(world.page)
       await expectMarkerAboveComposer(world.page, LIVE_TOOL_DONE)
 
+      await expandProcessedGroups(world.page)
       const liveRowSelector = `[data-chat-call-id="${LIVE_TOOL_CALL_ID}"] [data-sample="bash"]`
       const liveRow = world.page.locator(liveRowSelector)
       await wheelUntilVisible(world.page, liveRowSelector, -300)
@@ -752,6 +753,7 @@ describe('web e2e: long Chat scroll contract', () => {
       // Focus rides the last seeded tool row (a tabbable button whose keydown
       // handler passes scrolling keys through). End first normalizes the
       // focus-driven scrollIntoView back to the floor.
+      await expandProcessedGroups(world.page)
       const lastToolRow = world.page.locator(
         `[data-chat-call-id="chat-scroll-${String(INPUTS_FIXTURE.turns).padStart(3, '0')}-1"] [data-sample="bash"]`,
       )

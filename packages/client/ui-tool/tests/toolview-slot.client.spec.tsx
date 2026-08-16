@@ -18,7 +18,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply as applyConversation, inject as injectConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { apply as applyTool, inject as injectTool } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
-import { toolChatSnapshot } from './tool-details-render.client.tsx'
+import { expandProcessedGroups, toolChatSnapshot } from './tool-details-render.client.tsx'
 
 const SID = 's1' as SessionId
 
@@ -95,6 +95,7 @@ describe('keyed toolview hole through the real machinery', () => {
       toolResult(4, 'c2', 'mystery', '{"n":1}'),
     ])
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
     // bash: the sample plugin's keyed registration took the row (root
     // session → global arm, decided inside the component off useSessions).
     expect(view.container.querySelector('[data-sample="bash"]')).not.toBeNull()
@@ -113,6 +114,7 @@ describe('keyed toolview hole through the real machinery', () => {
       toolResult(6, 'cordis-4', 'cordis_undefine', '{"id":"dyn-2"}'),
     ])
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
 
     // Every one of these rows is user-visible on each model define/run, so each
     // names its act and carries the package id rather than falling back to the
@@ -131,6 +133,7 @@ describe('keyed toolview hole through the real machinery', () => {
   it('file-path clicks travel owner openFile → chat inject → workspaces.openPath', async () => {
     const b = await bench([toolResult(3, 'c1', 'read', '{"path":"src/a.ts"}')])
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
     view.getByText('src/a.ts').click()
     expect(b.layout.openDetails).not.toHaveBeenCalled()
     await vi.waitFor(() => {
@@ -142,6 +145,7 @@ describe('keyed toolview hole through the real machinery', () => {
   it('bash summary clicks do not open details or host paths', async () => {
     const b = await bench([toolResult(3, 'c1', 'bash')])
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
     view.getByText('Build').click()
     expect(b.layout.openDetails).not.toHaveBeenCalled()
     expect(b.runtime.workspaces.calls.some(c => c.method === 'openPath')).toBe(false)
@@ -151,6 +155,7 @@ describe('keyed toolview hole through the real machinery', () => {
   it('a live keyed registration takes over its tool row and unload reverts to the fallback', async () => {
     const b = await bench([toolResult(3, 'c2', 'mystery', '{"n":1}')])
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
     expect(view.getByText('Tool call')).toBeTruthy()
     let dispose = (): void => {}
     dispose = b.slots.register(
@@ -192,6 +197,7 @@ describe('keyed toolview hole through the real machinery', () => {
       <button data-testid="probe-row" onClick={poke}>{mark}</button>
     ))
     const view = b.runtime.renderRoot()
+    expandProcessedGroups(view)
     const row = view.getByTestId('probe-row')
     expect(row.textContent).toBe(`for:${SID}`)
     row.click()

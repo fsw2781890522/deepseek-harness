@@ -25,13 +25,14 @@ import { createChatStore } from '../src/client/stores.ts'
 import { ChatView } from '../src/client/chat/ChatView.tsx'
 import { zh } from '../src/client/locales.ts'
 import { AssistantNodeView } from '../src/client/chat/AssistantNodeView.tsx'
+import { ReasoningNodeView } from '../src/client/chat/ReasoningNodeView.tsx'
 import { CommandNodeView, ManualCompactionNodeView } from '../src/client/chat/CommandNodeView.tsx'
 import {
   CompactionNodeView, ContextMessageNodeView, RetryNodeView, TurnErrorNodeView,
   TurnMaxTokensNodeView, UnknownNodeView, UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
 import { TurnTailNodeView } from '../src/client/chat/TurnTailNodeView.tsx'
-import { formatRunDuration } from '../src/client/chat/message-chrome.ts'
+import { formatProcessDuration, formatRunDuration } from '../src/client/chat/message-chrome.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 afterEach(() => {
@@ -204,6 +205,8 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
         return <ContextMessageNodeView {...nodeProps<'context'>()} />
       case 'assistant-step':
         return <AssistantNodeView {...nodeProps<'assistant-step'>()} />
+      case 'assistant-reasoning':
+        return <ReasoningNodeView {...nodeProps<'assistant-reasoning'>()} />
       case 'command':
         return (
           <CommandNodeView
@@ -374,7 +377,23 @@ describe('Chat node rendering', () => {
     expect(formatRunDuration(125_000, t)).toBe('2分05秒')
   })
 
+  it('formatProcessDuration omits leading zero units and always keeps seconds', () => {
+    expect(formatProcessDuration(0)).toBe('0 s')
+    expect(formatProcessDuration(-500)).toBe('0 s')
+    expect(formatProcessDuration(999)).toBe('0 s')
+    expect(formatProcessDuration(1_000)).toBe('1 s')
+    expect(formatProcessDuration(61_000)).toBe('1 m 1 s')
+    expect(formatProcessDuration(3_600_000)).toBe('1 h 0 m 0 s')
+    expect(formatProcessDuration(3_661_000)).toBe('1 h 1 m 1 s')
+  })
+
 })
+
+function expandProcessed(view: ReturnType<typeof render>): void {
+  for (const row of view.getAllByRole('button', { name: /已处理/ })) {
+    fireEvent.click(row)
+  }
+}
 
 describe('ChatView', () => {
   it('hands a windowless tool result to the Tool seat with an empty tool name', () => {
@@ -382,6 +401,9 @@ describe('ChatView', () => {
       nodes: [{ ...toolResult(3, 'w1'), call: null }],
     })
     const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText(/已处理/)).toBeTruthy()
+    expect(view.queryByTestId('tool-seat-w1')).toBeNull()
+    expandProcessed(view)
     expect(view.getByTestId('tool-seat-w1')).toBeTruthy()
     expect(h.toolOwners[0]).toMatchObject({ callId: 'w1', toolName: '' })
   })
@@ -425,6 +447,9 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByText('do the thing')).toBeTruthy()
     expect(view.getByText('running tools')).toBeTruthy()
+    expect(view.getByText('已处理 1 s')).toBeTruthy()
+    expect(view.queryByTestId('tool-seat-a')).toBeNull()
+    expandProcessed(view)
     expect(view.getByTestId('tool-seat-a').textContent).toBe('bash:a')
     expect(view.getByTestId('tool-seat-b').textContent).toBe('bash:b')
     expect([...view.container.querySelectorAll('[data-chat-flow-key]')].map(row => ({
@@ -440,8 +465,8 @@ describe('ChatView', () => {
       .toEqual(['a', 'b'])
     expect([...view.container.querySelectorAll('[data-chat-anchor-key]')].map(row => row.getAttribute('data-chat-anchor-key')))
       .toEqual([
-        'fixture:user:1', 'fixture:assistant:2',
-        'fixture:tool:a', 'call:a', 'fixture:tool:b', 'call:b',
+        'fixture:user:1', 'fixture:assistant:2', 'fixture:tool:a',
+        'call:a', 'fixture:tool:b', 'call:b',
       ])
   })
 
@@ -602,6 +627,7 @@ describe('ChatView', () => {
 
   it('hands the trajectory callback to the Tool seat', () => {
     const h = makeHarness({
+      running: true,
       nodes: [toolResult(3, 'a')],
     })
     render(<h.ChatView {...h.props} />)
@@ -819,27 +845,64 @@ describe('ChatView', () => {
     expect(view.container.querySelectorAll('h1')).toHaveLength(2)
   })
 
-  it('streaming partial frames update the tail without replacing a sibling Tool row', () => {
+  it('streaming frames update the tail without replacing a sibling live Tool row', () => {
     const h = makeHarness({
+      running: true,
       nodes: [user(1, 'q'), assistant(2, 'old answer'), toolResult(3, 'a')],
     })
     const view = render(<h.ChatView {...h.props} />)
     const tool = view.getByTestId('tool-seat-a')
     const beforeHtml = tool.innerHTML
     act(() => {
-      h.set({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'streaming…' }] } })
+      h.set({ nodes: [user(1, 'q'), assistant(2, 'streaming…'), toolResult(3, 'a')] })
     })
     act(() => {
-      h.set({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'streaming… more' }] } })
+      h.set({ nodes: [user(1, 'q'), assistant(2, 'streaming… more'), toolResult(3, 'a')] })
     })
     expect(view.getByText('streaming… more')).toBeTruthy()
     expect(view.getByTestId('tool-seat-a')).toBe(tool)
     expect(tool.innerHTML).toBe(beforeHtml)
   })
 
-  it('streaming leaves neighbor tool rows and history items at zero re-renders', () => {
+  it('collapses Think and Tool rows once a later reply seals the run', () => {
+    const think: AssistantMessageNode = {
+      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1,
+      blocks: [{ kind: 'reasoning', text: 'plan the work' }],
+    }
     const h = makeHarness({
-      nodes: [user(1, 'q'), assistant(2, 'old'), toolResult(3, 'a')],
+      running: true,
+      nodes: [user(1, 'q'), think, toolResult(3, 'a')],
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('Think')).toBeTruthy()
+    expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+    act(() => {
+      h.set({
+        running: false,
+        nodes: [user(1, 'q'), think, toolResult(3, 'a'), assistant(4, 'done')],
+      })
+    })
+    expect(view.getByText('已处理 1 s')).toBeTruthy()
+    expect(view.queryByText('Think')).toBeNull()
+    expect(view.queryByTestId('tool-seat-a')).toBeNull()
+    expect(view.getByText('done')).toBeTruthy()
+    const group = view.container.querySelector('[data-chat-process-group]')
+    expect(group?.getAttribute('data-chat-anchor-key')).toBe('fixture:assistant-reasoning:2')
+    expandProcessed(view)
+    expect(group?.getAttribute('data-chat-anchor-key')).toBeNull()
+    expect(view.getByText('Think')).toBeTruthy()
+    expect(view.getByText('plan the work')).toBeTruthy()
+    expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+    expandProcessed(view)
+    expect(view.queryByText('Think')).toBeNull()
+  })
+
+  it('streaming leaves neighbor tool rows and history items at zero re-renders', () => {
+    const u = user(1, 'q')
+    const tool = toolResult(3, 'a')
+    const h = makeHarness({
+      running: true,
+      nodes: [u, assistant(2, 'old'), tool],
     })
     // Count renderSlot invocations: the memo boundary holds when CallRow does
     // not re-render, so the row's renderSlot call count freezes during chunks.
@@ -854,16 +917,16 @@ describe('ChatView', () => {
     expect(view.getByTestId('counting-row')).toBeTruthy()
     const afterMount = rowRenders
     act(() => {
-      h.set({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'chunk1' }] } })
+      h.set({ running: true, nodes: [u, assistant(2, 'chunk1'), tool] })
     })
     act(() => {
-      h.set({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'chunk1 chunk2' }] } })
+      h.set({ running: true, nodes: [u, assistant(2, 'chunk1 chunk2'), tool] })
     })
     expect(rowRenders).toBe(afterMount)
   })
 
   it('updates the selected call id handed to the Tool seat', () => {
-    const h = makeHarness({ nodes: [toolResult(3, 'a')] })
+    const h = makeHarness({ running: true, nodes: [toolResult(3, 'a')] })
     render(<h.ChatView {...h.props} />)
     expect(h.toolOwners.at(-1)?.selectedCallId).toBeUndefined()
     act(() => { h.setSelection({ turnSeq: 3, callId: 'a', toolName: 'bash' }) })
@@ -895,7 +958,7 @@ describe('ChatView', () => {
     }
 
     const h = makeHarness({
-      nodes: [user(1, 'q'), assistant(4, 'later')],
+      nodes: [user(1, 'q')],
       runningCalls: [runningCall('r1')],
       running: true,
     })
@@ -913,9 +976,9 @@ describe('ChatView', () => {
 
     act(() => {
       h.set({
-        nodes: [user(1, 'q'), toolResult(3, 'r1'), assistant(4, 'later')],
+        nodes: [user(1, 'q'), toolResult(3, 'r1')],
         runningCalls: [],
-        running: false,
+        running: true,
       })
     })
 
@@ -952,7 +1015,7 @@ describe('ChatView', () => {
 
   it('hands each ordered root call to the keyed business-node slot', () => {
     const block = toolResult(3, 'a')
-    const h = makeHarness({ nodes: [block] })
+    const h = makeHarness({ running: true, nodes: [block] })
     const calls: { key: string; owner: object; entryKey?: string }[] = []
     h.props.renderSlot = ((key: string, owner: object, opts?: { entryKey?: string; fallback?: React.ReactNode }) => {
       calls.push({ key, owner, ...(opts?.entryKey !== undefined ? { entryKey: opts.entryKey } : {}) })
@@ -1221,13 +1284,34 @@ describe('ChatView', () => {
     }
   })
 
-  it('paging button loads older and shows its busy label', () => {
+  it('one click starts paging and holds an obvious busy control until the request settles', async () => {
+    let settle!: () => void
     const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true })
+    h.loadOlder.mockImplementation(() => new Promise<void>((resolve) => { settle = resolve }))
     const view = render(<h.ChatView {...h.props} />)
-    fireEvent.click(view.getByText('加载更早'))
+    const button = view.getByRole<HTMLButtonElement>('button', { name: '加载更早' })
+    act(() => {
+      button.click()
+      button.click()
+    })
     expect(h.loadOlder).toHaveBeenCalledTimes(1)
-    act(() => { h.set({ loadingOlder: true }) })
-    expect(view.getByText('加载中…')).toBeTruthy()
+    expect(button.disabled).toBe(true)
+    expect(button.getAttribute('aria-busy')).toBe('true')
+    expect(button.textContent).toContain('加载中')
+    await act(async () => { settle() })
+    expect(button.disabled).toBe(false)
+    expect(button.getAttribute('aria-busy')).toBeNull()
+    expect(button.textContent).toBe('加载更早')
+  })
+
+  it('keeps the paging control busy from session loadingOlder without a second click', () => {
+    const h = makeHarness({ nodes: [user(5, 'later')], hasMore: true, loadingOlder: true })
+    const view = render(<h.ChatView {...h.props} />)
+    const button = view.getByRole<HTMLButtonElement>('button', { name: '加载更早' })
+    expect(button.disabled).toBe(true)
+    expect(button.textContent).toContain('加载中')
+    fireEvent.click(button)
+    expect(h.loadOlder).not.toHaveBeenCalled()
   })
 
   it('shows open error and loading states', () => {
@@ -1353,5 +1437,57 @@ describe('ChatView', () => {
     const failedView = render(<failed.ChatView {...failed.props} />)
     expect(failedView.getByText('Compaction cancelled.')).toBeTruthy()
     expect(failedView.container.querySelector('[data-state="error"]')).not.toBeNull()
+  })
+
+  it('lists loaded user prompts in the side nav and jumps to the matching row', () => {
+    const h = makeHarness({
+      nodes: [
+        user(1, 'first prompt'),
+        assistant(2, 'a', 1),
+        user(3, 'second prompt'),
+        assistant(4, 'b', 2),
+      ],
+      turnEnds: new Map([[1, 2], [2, 4]]),
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const nav = view.getByRole('navigation', { name: '对话导航' })
+    expect(within(nav).getAllByRole('button')).toHaveLength(2)
+    const row = view.container.querySelector('[data-chat-anchor-key="fixture:user:1"]')
+    expect(row).not.toBeNull()
+    const intoView = vi.fn()
+    ;(row as HTMLElement).scrollIntoView = intoView
+    fireEvent.click(within(nav).getByRole('button', { name: 'first prompt' }))
+    expect(intoView).toHaveBeenCalled()
+    expect(within(nav).getByRole('button', { name: 'first prompt' }).getAttribute('aria-current')).toBe('location')
+  })
+
+  it('jump-to-bottom highlights the last loaded user prompt', () => {
+    const h = makeHarness({
+      nodes: [
+        user(1, 'first prompt'),
+        assistant(2, 'a', 1),
+        user(3, 'second prompt'),
+        assistant(4, 'b', 2),
+      ],
+      turnEnds: new Map([[1, 2], [2, 4]]),
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const nav = view.getByRole('navigation', { name: '对话导航' })
+    const row = view.container.querySelector('[data-chat-anchor-key="fixture:user:1"]')
+    expect(row).not.toBeNull()
+    ;(row as HTMLElement).scrollIntoView = vi.fn()
+    fireEvent.click(within(nav).getByRole('button', { name: 'first prompt' }))
+    expect(within(nav).getByRole('button', { name: 'first prompt' }).getAttribute('aria-current')).toBe('location')
+    fireEvent.click(view.getByLabelText('回到底部'))
+    expect(within(nav).getByRole('button', { name: 'second prompt' }).getAttribute('aria-current')).toBe('location')
+    expect(view.queryByLabelText('回到底部')).toBeNull()
+  })
+
+  it('omits the prompt nav when the window has no user messages', () => {
+    const h = makeHarness({
+      nodes: [assistant(1, 'hello')],
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByRole('navigation', { name: '对话导航' })).toBeNull()
   })
 })

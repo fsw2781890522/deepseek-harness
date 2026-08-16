@@ -19,7 +19,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { conversationContextKey, newEnglishPage, saveFailureShot } from './support.ts'
+import { conversationContextKey, expandProcessedGroups, newEnglishPage, saveFailureShot } from './support.ts'
 
 const MODE = webSnapshotMode()
 const SESSION_ID = 'chat-long-interactions-e2e'
@@ -193,6 +193,7 @@ describe('web e2e: long Chat interaction contract', () => {
     if (boundary === undefined) throw new Error(`turn ${String(BRANCH_TURN)} has no turn/end event`)
     const expectedUserText = textContent(branchUserEvent.data.content)
 
+    await expandProcessedGroups(page)
     await wheelUntilMounted(page, `[data-chat-call-id="${TARGET_CALL_2}"]`, -1_100)
     const toolUserKey = messageKey(toolUserEvent)
     const toolAssistantKey = assistantKey(toolAssistantEvent)

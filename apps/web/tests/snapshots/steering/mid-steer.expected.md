@@ -9,6 +9,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Use the ask_user_question tool to ask me exactly one question wi…"
 - text: Use the ask_user_question tool to ask me exactly one question with id "checkpoint", question "Ready to continue?", header "Checkpoint", and options labeled "Yes" and "No". After I answer, reply with one short sentence acknowledging my answer and stop. {{clock}}
 - button "Copy":
   - img

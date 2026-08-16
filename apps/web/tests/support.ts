@@ -133,3 +133,31 @@ export async function saveFailureShot(page: Page, name: string): Promise<void> {
 export function conversationContextKey(kind: string, id: string): string {
   return `${kind.length}:${kind}${id}`
 }
+
+/**
+ * Expand every sealed Chat process group so Think and Tool seats mount.
+ * Settled transcripts collapse those rows; tests that inspect them expand first.
+ * @param page - browser page under test.
+ */
+export async function expandProcessedGroups(page: Page): Promise<void> {
+  const groups = page.locator('[data-chat-process-group]')
+  const count = await groups.count()
+  for (let i = 0; i < count; i++) {
+    const toggle = groups.nth(i).locator('[data-disclosure-row]').first()
+    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click()
+  }
+}
+
+/**
+ * Collapse every Chat process group back to the sealed header.
+ * Use after a test expanded groups on a page that a later golden still shares.
+ * @param page - browser page under test.
+ */
+export async function collapseProcessedGroups(page: Page): Promise<void> {
+  const groups = page.locator('[data-chat-process-group]')
+  const count = await groups.count()
+  for (let i = 0; i < count; i++) {
+    const toggle = groups.nth(i).locator('[data-disclosure-row]').first()
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click()
+  }
+}

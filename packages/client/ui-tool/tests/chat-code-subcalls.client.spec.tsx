@@ -25,7 +25,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { apply as applyConversation, inject as injectConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { apply as applyTool, inject as injectTool } from '../src/client/apply.ts'
-import { toolChatSnapshot } from './tool-details-render.client.tsx'
+import { expandProcessedGroups, toolChatSnapshot } from './tool-details-render.client.tsx'
 
 const SID = 's1' as SessionId
 
@@ -183,7 +183,9 @@ async function bench(snapshot: ConversationSnapshot) {
 }
 
 function mountApp(slots: SlotRegistry) {
-  return render(<>{slots.renderSlot('root', {})}</>)
+  const view = render(<>{slots.renderSlot('root', {})}</>)
+  expandProcessedGroups(view)
+  return view
 }
 
 describe('run_code sub-calls through the real chat machinery', () => {

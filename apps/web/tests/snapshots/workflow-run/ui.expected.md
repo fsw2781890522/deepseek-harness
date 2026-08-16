@@ -5,6 +5,9 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
+- button "Processed {{duration}}" [expanded]:
+  - img
+  - text: Processed {{duration}}
 - button "Think The user wants me to use the workflow tool exactly once with specific parameters. Let me carefully follow the instructions:":
   - img
   - img

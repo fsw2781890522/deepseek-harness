@@ -7,6 +7,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - 'button "Run two shell commands: wait for cancellation, then write skippe…"'
 - text: "Run two shell commands: wait for cancellation, then write skipped.txt. {{date}} {{clock}}"
 - button "Copy":
   - img
@@ -14,6 +16,9 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
+- button "Processed {{duration}}" [expanded]:
+  - img
+  - text: Processed {{duration}}
 - 'button "Failed Bash Error: tool call aborted" [expanded]':
   - img
   - text: "Failed Bash Error: tool call aborted"

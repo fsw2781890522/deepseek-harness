@@ -9,18 +9,19 @@ import {
 import type { UseSession } from '@deepseek-ai/dsh-client-web-react'
 import type { ConversationSnapshot, SessionId, SessionListState, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionProviderComponent } from '@deepseek-ai/dsh-client-ui-slots'
-import type { DetailsSlotProps, DetailsToolOwnerProps, SelectionTarget } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {
+  ChatViewSlotProps, DetailsSlotProps, DetailsToolOwnerProps, SelectionTarget,
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { createChatStore } from '../src/client/stores.ts'
-import { AssistantMarkdown, type AssistantMarkdownProps } from '../src/client/chat/AssistantMarkdown.tsx'
 import { StatsLine } from '../src/client/chat/StatsLine.tsx'
 import { DetailsPanel } from '../src/client/skeleton/DetailsPanel.tsx'
 import { zh } from '../src/client/locales.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 // Mirrors the real lookup chain (conversation namespace, then common).
-const t: AssistantMarkdownProps['t'] = makeTranslate(zh, commonZh)
+const t: ChatViewSlotProps['t'] = makeTranslate(zh, commonZh)
 
 /** jsdom has no ResizeObserver; StatsLine watches its row for ellipsis truncation through one. */
 class ResizeObserverStub {
@@ -58,18 +59,6 @@ function snapshotBase(): ConversationSnapshot {
 }
 
 describe('render branch tails', () => {
-  it('AssistantMarkdown reasoning row is ok-state when not the streaming tail', () => {
-    const view = render(
-      <AssistantMarkdown
-        t={t}
-        blocks={[{ kind: 'reasoning', text: 'done thinking' }, { kind: 'text', text: 'answer' }]}
-        streaming
-      />,
-    )
-    // reasoning at index 0 with a later block: running is false → ok state.
-    expect(view.container.querySelector('[data-state="ok"]')).not.toBeNull()
-  })
-
   it('StatsLine falls back to window-node counts and drops every token group without projections', () => {
     // No sessionStats key → the window fold supplies the counts (the
     // assembly-without-the-unit fallback). Node `usage` is deliberately
@@ -96,13 +85,6 @@ describe('render branch tails', () => {
       />,
     )
     expect(view.container.textContent).toBe('2 轮 · 3 步')
-  })
-
-  it('AssistantMarkdown reasoning as the streaming tail renders the running ring', () => {
-    const view = render(
-      <AssistantMarkdown t={t} blocks={[{ kind: 'reasoning', text: 'still thinking' }]} streaming />,
-    )
-    expect(view.container.querySelector('[data-state="running"]')).not.toBeNull()
   })
 
   it('DetailsPanel title falls to 详情 when the selection has no toolName and no material', () => {

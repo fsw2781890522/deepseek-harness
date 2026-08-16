@@ -20,7 +20,7 @@ import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
   launchWebScaffold, recordFixture, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { connectFreshWorkspace, newEnglishPage, REPO_ROOT, saveFailureShot } from './support.ts'
+import { connectFreshWorkspace, expandProcessedGroups, newEnglishPage, REPO_ROOT, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/fresh-round-trip', import.meta.url))
 const FIXTURE = fileURLToPath(new URL('./snapshots/fresh-round-trip/session.jsonl', import.meta.url))
@@ -155,6 +155,7 @@ describe('web e2e: fresh round trip through the real assembly', () => {
     // tier pins the same gesture against FixtureApiClient; this one runs on
     // mux-frame-fed state). Runs after the golden capture so the committed
     // aria surface stays the untouched settled state.
+    await expandProcessedGroups(page)
     const think = page.getByRole('button', { name: /^Think/ }).first()
     expect(await think.getAttribute('aria-expanded')).toBe('false')
     await think.click()

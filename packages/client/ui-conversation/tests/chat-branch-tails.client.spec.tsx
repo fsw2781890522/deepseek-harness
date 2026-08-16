@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 // Remaining chat branch tails: MessageItem context/unknown arms,
-// user IconActions, StatsLine no-cache join,
-// AssistantMarkdown single-line reasoning. (Tool-row dispatch tails live
-// with the keyed-slot machinery specs since the tool ring dissolved into
-// renderSlot.)
+// user IconActions, StatsLine no-cache join.
+// (Tool-row dispatch tails live with the keyed-slot machinery specs since
+// the tool ring dissolved into renderSlot.)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -21,7 +20,6 @@ import {
   CompactionNodeView, ContextMessageNodeView, RetryNodeView, UnknownNodeView,
   UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
-import { AssistantMarkdown } from '../src/client/chat/AssistantMarkdown.tsx'
 import { StatsLine, type StatsLineProps } from '../src/client/chat/StatsLine.tsx'
 import { zh } from '../src/client/locales.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
@@ -947,13 +945,6 @@ describe('useCalendarDay boundary refresh', () => {
 })
 
 describe('small branch tails', () => {
-  it('AssistantMarkdown single-line reasoning summary skips the newline cut', () => {
-    const view = render(
-      <AssistantMarkdown t={t} blocks={[{ kind: 'reasoning', text: 'one-liner' }]} streaming={false} />,
-    )
-    expect(view.getByText('one-liner')).toBeTruthy()
-  })
-
   it('StatsLine omits the cache-hit segment when no input accounting exists at all', () => {
     // Cache hit is null only when all three prompt buckets are zero (pure
     // output accounting) — any billed input makes it a real 0%.
