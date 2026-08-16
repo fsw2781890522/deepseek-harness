@@ -26,13 +26,13 @@ function declarations(selector: string): Map<string, string> | undefined {
 }
 
 describe('SidebarRoot.module.css', () => {
-  it('uses the light/dark semantic fill with restrained glass blur', () => {
+  it('leaves the root transparent so AppFrame owns the glass surface', () => {
     const root = declarations('.root')
-    expect(root?.get('background')).toBe(
-      'color-mix(in srgb, var(--dsw-specific-sidebar-fill) 90%, transparent)',
-    )
-    expect(root?.get('backdrop-filter')).toBe('blur(18px) saturate(115%)')
-    expect(root?.get('-webkit-backdrop-filter')).toBe('blur(18px) saturate(115%)')
+    expect(root?.get('background')).toBe('transparent')
+    expect(root?.get('position')).toBe('relative')
+    expect(root?.get('backdrop-filter')).toBeUndefined()
+    expect(root?.get('-webkit-backdrop-filter')).toBeUndefined()
+    expect(declarations('.root::before')).toBeUndefined()
   })
 
   it('shares and cancels the wide shell trailing padding structurally', () => {

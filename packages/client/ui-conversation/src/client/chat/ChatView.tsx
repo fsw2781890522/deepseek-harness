@@ -376,7 +376,7 @@ export function ChatView({
   }, [promptKeys])
 
   return (
-    <div className={css.root}>
+    <div className={openState === 'loading' ? `${css.root} ${css.historyLoadingRoot}` : css.root}>
       <PromptNav
         items={promptItems}
         activeKey={activePromptKey}
@@ -396,7 +396,11 @@ export function ChatView({
       />
       <div ref={listRef} className={css.scroll}>
         <div ref={columnRef} className={css.column} data-chat-flow="">
-          {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
+          {openState === 'loading' && (
+            <div className={`${css.hint} ${css.historyLoading}`} role="status">
+              {t('chat.loadingHistory')}
+            </div>
+          )}
           {openState === 'error' && openError !== null && (
             <div className={css.openError}>
               {t('chat.loadError', { message: openError.message, code: openError.code })}

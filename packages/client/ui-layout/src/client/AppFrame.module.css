@@ -25,8 +25,31 @@
 .sidebarCol {
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
+  /* The sidebar is a real glass surface, not merely a translucent fill on an
+     inner child. This lets Chromium sample and soften the frame behind the
+     entire rail while the semantic fill keeps labels readable in both themes.
+     40% of the softened frame remains visible for a clear glass effect. */
+  background: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 60%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(120%);
+  backdrop-filter: blur(22px) saturate(120%);
   border-right: 1px solid var(--dsw-alias-border-l1);
+}
+
+/* Settings is rendered by the sidebar slot, but its mask is viewport-wide.
+   Raise the owning grid item as one stacking context while the dialog exists;
+   otherwise center-column docks (composer, prompt navigation, and details
+   overlays) can paint above the fixed settings mask even when the dialog has a
+   larger local z-index. */
+.sidebarCol:has([role='dialog']) {
+  position: relative;
+  z-index: 1001;
+  /* A filtered ancestor traps fixed descendants. Drop the glass containing
+     block while Settings is mounted; the viewport-wide mask then escapes the
+     column and this elevated grid item keeps every center-column surface below
+     it. */
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .centerCol {

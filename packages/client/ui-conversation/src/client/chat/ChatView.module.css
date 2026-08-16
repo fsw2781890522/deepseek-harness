@@ -32,6 +32,14 @@
   min-height: auto;
 }
 
+/* Full-history open owns the session view's available height, so its status
+   can sit in the conversation midpoint instead of appearing above the first
+   message. The class is only present during the initial open. */
+.root.historyLoadingRoot,
+:global([data-conversation-scroll]) .root.historyLoadingRoot {
+  height: 100%;
+}
+
 /* Message column: shared chat width (ConversationRoot --dsh-chat-content-width),
    centered on the same axis as the input box (which caps at chat + 16px); the
    scroller itself stays full-bleed. */
@@ -118,6 +126,19 @@
   color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
+}
+
+.historyLoading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .openError {
