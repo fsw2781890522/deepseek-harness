@@ -4,6 +4,7 @@
  * owns their slot assembly.
  */
 export type {} from './conversation-nodes/assistant.ts'
+export type {} from './conversation-nodes/assistant-reasoning.ts'
 export type {} from './conversation-nodes/command.ts'
 export type {} from './conversation-nodes/compaction.ts'
 export type {} from './conversation-nodes/fallback.ts'
@@ -24,7 +25,7 @@ export type {
 } from './contract/views.ts'
 export type { ConversationKey } from './locales.ts'
 export type {
-  AssistantChatData, ChatNode, ChatNodeDataMap, ChatNodeKind, ManualCompactionChatData,
+  AssistantChatData, AssistantReasoningChatData, ChatNode, ChatNodeDataMap, ChatNodeKind, ManualCompactionChatData,
   RetryChatData, ToolChatData, TurnTailChatData,
 } from './contract/chat-nodes.ts'
 export type {

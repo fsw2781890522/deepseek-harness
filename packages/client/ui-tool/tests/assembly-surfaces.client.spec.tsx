@@ -8,7 +8,7 @@ import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { SlotTestRuntime, usePinnedBrowserLanguages, stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as applyConversation, inject as injectConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { apply as applyTool, inject as injectTool } from '../src/client/apply.ts'
-import { toolChatSnapshot } from './tool-details-render.client.tsx'
+import { expandProcessedGroups, toolChatSnapshot } from './tool-details-render.client.tsx'
 
 // The service reads its initial locale from the browser; these specs assert
 // the shipped Chinese copy, so they state the browser they assume.
@@ -101,6 +101,7 @@ describe('todo_write assembly (product registrations, no outlet twins)', () => {
     // The dock strip reads the host-computed 'todos' projection.
     runtime.sessions.behavior(SID).projections.set('todos', TODOS)
     const view = runtime.renderRoot()
+    expandProcessedGroups(view)
 
     // Keyed toolview registration took the row (summary derived from args).
     const row = view.container.querySelector('[data-tool="todo_write"]')
@@ -136,6 +137,7 @@ describe('terminal card assembly', () => {
       bashResult(4, 'c-fallback', { call: { name: 'fx-bash', argsRaw: '{"command":"ls -la"}' } }),
     ])
     const view = runtime.renderRoot()
+    expandProcessedGroups(view)
 
     // Keyed BashRow: collapsed by default, the whole summary row is the toggle.
     const keyedRow = view.container.querySelector('[data-sample="bash"]')

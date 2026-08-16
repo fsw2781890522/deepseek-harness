@@ -22,7 +22,7 @@ import {
   fixtureUserPrompts, launchWebScaffold, seedSession, webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
+import { connectFreshWorkspace, expandProcessedGroups, newEnglishPage, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/pwsh-terminal', import.meta.url))
 const SEED = join(SNAPSHOT_DIR, 'seed.jsonl')
@@ -80,6 +80,7 @@ describe.skipIf(MODE === 'record' || !HAS_PWSH)('web e2e: pwsh calls use the bas
     await page.getByRole('tab', { name: 'Chat', exact: true }).waitFor({ timeout: 15_000 })
     // The tool row is expand-gated: the settled row uses the bash layout and carries the
     // shell-family variant, and the terminal card lives in the expanded body.
+    await expandProcessedGroups(page)
     const row = page.locator('[data-tool="pwsh"]').first()
     await row.waitFor({ timeout: 15_000 })
     if (await row.getAttribute('aria-expanded') !== 'true') await row.click()

@@ -9,6 +9,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Reply with the single word LIGHTHOUSE and stop."
 - text: Reply with the single word LIGHTHOUSE and stop. {{clock}}
 - button "Copy":
   - img
@@ -16,10 +18,10 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- button "Think The user wants me to reply with a single word. Let me comply.":
+- button "Processed {{duration}}":
   - img
   - img
-  - text: Think The user wants me to reply with a single word. Let me comply.
+  - text: Processed {{duration}}
 - paragraph: LIGHTHOUSE
 - button "Copy":
   - img

@@ -28,6 +28,17 @@ export interface AssistantChatData {
   readonly finalNode?: AssistantMessageNode
 }
 
+/** Per-step Think row extracted from the Assistant lifecycle. */
+export interface AssistantReasoningChatData {
+  readonly status: 'running' | 'settled' | 'interrupted'
+  readonly turn: number
+  readonly step: number
+  readonly blocks: readonly Extract<AssistantBlock, { kind: 'reasoning' }>[]
+  readonly time: number
+  readonly startTime: number
+  readonly endTime: number
+}
+
 /** Settled or interrupted Assistant payload with its durable presentation node. */
 export type FinalAssistantChatData = AssistantChatData & {
   readonly finalNode: AssistantMessageNode

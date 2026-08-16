@@ -5,6 +5,10 @@ import type {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { ConversationNodeAssembler } from '@deepseek-ai/dsh-client-runtime/client'
 import { assistantDefinition } from '../src/client/conversation-nodes/assistant.ts'
+import { assistantReasoningDefinition } from '../src/client/conversation-nodes/assistant-reasoning.ts'
+import {
+  assistantPublication, initialAssistantState, matchAssistantLifecycle, updateAssistantState,
+} from '../src/client/conversation-nodes/assistant-fold.ts'
 import { chatViewDefinition } from '../src/client/conversation-nodes/chat-snapshot-builder.ts'
 import { commandDefinition } from '../src/client/conversation-nodes/command.ts'
 import { compactionDefinition } from '../src/client/conversation-nodes/compaction.ts'
@@ -17,7 +21,8 @@ import { turnErrorDefinition } from '../src/client/conversation-nodes/turn-error
 import { turnMaxTokensDefinition } from '../src/client/conversation-nodes/turn-max-tokens.ts'
 import { turnTailDefinition } from '../src/client/conversation-nodes/turn-tail.ts'
 import type {
-  AssistantChatData, ManualCompactionChatData, RetryChatData, ToolChatData, TurnTailChatData,
+  AssistantChatData, AssistantReasoningChatData, ManualCompactionChatData, RetryChatData,
+  ToolChatData, TurnTailChatData,
 } from '../src/client/contract/chat-nodes.ts'
 
 const DEFINITIONS: readonly ConversationNodeDefinition[] = [
@@ -25,6 +30,7 @@ const DEFINITIONS: readonly ConversationNodeDefinition[] = [
   nextStepInboxDefinition,
   messageDefinition,
   assistantDefinition,
+  assistantReasoningDefinition,
   toolDefinition,
   commandDefinition,
   compactionDefinition,
@@ -272,6 +278,227 @@ describe('built-in conversation node Definitions', () => {
       status: 'interrupted',
       blocks: [{ kind: 'text', text: 'loaded partial' }],
     })
+  })
+
+  it('projects Think as a sibling Chat Node ordered before tools and the reply', () => {
+    const value = assembler([
+      at(1, 'turn/start', { turn: 1 }),
+      at(2, 'step/start', { turn: 1, step: 1 }),
+      at(3, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'block-start', index: 0, blockType: 'reasoning' },
+      }),
+      at(4, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'reasoning-delta', index: 0, text: 'plan' },
+      }),
+      at(5, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'block-end', index: 0, block: { type: 'reasoning', text: 'plan' } },
+      }),
+      at(6, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'tool-call-delta', index: 1, id: 'call-1', name: 'read', argumentsDelta: '{}' },
+      }),
+      at(7, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'usage', usage: { inputTokens: 2, outputTokens: 1 } },
+      }),
+      at(8, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'finish', reason: 'stop' },
+      }),
+      at(9, 'assistant/message', {
+        turn: 1,
+        step: 1,
+        message: {
+          ...assistantMessage('assistant-tools', ''),
+          content: [
+            { type: 'reasoning', text: 'plan' },
+            { type: 'tool-call', id: 'call-1', name: 'read', arguments: '{}' },
+          ],
+        },
+      }, { surfaceOp: 'append' }),
+      at(10, 'tool/call', { turn: 1, step: 1, callId: 'call-1', name: 'read', arguments: '{}' }),
+      at(11, 'tool/result', {
+        turn: 1,
+        step: 1,
+        message: toolResult('call-1', 'ok'),
+      }, { surfaceOp: 'append' }),
+      at(12, 'step/end', { turn: 1, step: 1 }),
+      at(13, 'step/start', { turn: 1, step: 2 }),
+      at(14, 'assistant/message', {
+        turn: 1,
+        step: 2,
+        message: assistantMessage('assistant-reply', 'done'),
+      }, { surfaceOp: 'append' }),
+      at(15, 'step/end', { turn: 1, step: 2 }),
+      at(16, 'turn/end', { turn: 1, reason: { kind: 'completed' } }),
+    ])
+    const current = snapshot(value)
+    expect(current.order.map(key => current.nodes.get(key)?.kind)).toEqual([
+      'assistant-reasoning', 'tool-call', 'assistant-step', 'turn-tail',
+    ])
+    const reasoning = node(current, 'assistant-reasoning')
+    expect(reasoning?.data).toMatchObject({
+      status: 'settled',
+      blocks: [{ kind: 'reasoning', text: 'plan' }],
+    } satisfies Partial<AssistantReasoningChatData>)
+    expect((reasoning?.data as AssistantReasoningChatData).endTime)
+      .toBe(1_700_000_000_005)
+    const replyKey = current.order.find(key => current.nodes.get(key)?.kind === 'assistant-step')
+    expect(current.nodes.get(replyKey ?? '')?.data).toMatchObject({
+      status: 'settled',
+      blocks: [{ kind: 'text', text: 'done' }],
+    })
+  })
+
+  it('keeps reasoning-only interruption on the Think row and hides the reply shell', () => {
+    const value = assembler([
+      at(1, 'turn/start', { turn: 1 }),
+      at(2, 'step/start', { turn: 1, step: 1 }),
+      at(3, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'reasoning-delta', index: 0, text: 'partial think' },
+      }),
+      at(4, 'step/end', { turn: 1, step: 1 }),
+    ])
+    const current = snapshot(value)
+    expect(node(current, 'assistant-step')?.visibility).toBe('hidden')
+    expect(current.order.map(key => current.nodes.get(key)?.kind)).toEqual(['assistant-reasoning'])
+    expect(node(current, 'assistant-reasoning')?.data).toMatchObject({
+      status: 'interrupted',
+      blocks: [{ kind: 'reasoning', text: 'partial think' }],
+    })
+  })
+
+  it('hides a prior Think row across retry and restores it when reasoning resumes', () => {
+    const value = assembler([
+      at(1, 'turn/start', { turn: 1 }),
+      at(2, 'step/start', { turn: 1, step: 1 }),
+      at(3, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'reasoning-delta', index: 0, text: 'first think' },
+      }),
+    ])
+    const before = node(snapshot(value), 'assistant-reasoning')
+    expect(before?.visibility).toBe('visible')
+
+    value.append(at(4, 'llm/retry', {
+      retryId: 'retry-think',
+      turn: 1,
+      step: 1,
+      provider: 'fake',
+      mode: 'normal',
+      policyKey: 'fake-normal',
+      retry: 1,
+      maxRetries: 2,
+      delayMs: 10,
+      failure: { code: 'TRANSPORT', message: 'temporary' },
+    }))
+    value.flush()
+    expect(node(snapshot(value), 'assistant-reasoning')?.visibility).toBe('hidden')
+
+    value.append(at(5, 'assistant/chunk', {
+      turn: 1,
+      step: 1,
+      chunk: { type: 'reasoning-delta', index: 0, text: 'second think' },
+    }))
+    value.flush()
+    expect(node(snapshot(value), 'assistant-reasoning')?.visibility).toBe('visible')
+    expect(node(snapshot(value), 'assistant-reasoning')?.key).toBe(before?.key)
+  })
+
+  it('opens Assistant Definitions only from step/start and ignores unrelated events', () => {
+    const context = {} as never
+    const chunk = { event: { type: 'assistant/chunk' } } as never
+    const reader = { previous: () => undefined }
+    expect(() => assistantDefinition.start(context, chunk, reader)).toThrow('assistant-step start requires step/start')
+    expect(() => assistantReasoningDefinition.start(context, chunk, reader)).toThrow(
+      'assistant-reasoning start requires step/start',
+    )
+    expect(matchAssistantLifecycle({ type: 'turn/start', data: { turn: 1 } } as never)).toBeNull()
+    expect(assistantPublication({ event: { type: 'step/start' } } as never)).toBe('none')
+    expect(assistantPublication({
+      event: { type: 'assistant/chunk', data: { chunk: { type: 'text-delta' } } },
+    } as never)).toBe('animation-frame')
+    expect(assistantPublication({
+      event: { type: 'assistant/chunk', data: { chunk: { type: 'usage' } } },
+    } as never)).toBe('none')
+    expect(assistantPublication({ event: { type: 'assistant/message' } } as never)).toBe('immediate')
+    const state = initialAssistantState(1, 1)
+    expect(updateAssistantState(state, { event: { type: 'step/end' } } as never)).toBe(state)
+    const started = updateAssistantState(state, {
+      event: {
+        type: 'assistant/chunk', seq: 1, time: 1,
+        data: { turn: 1, step: 1, chunk: { type: 'block-start', index: 0, blockType: 'reasoning' } },
+      },
+    } as never)
+    const restarted = updateAssistantState(started, {
+      event: {
+        type: 'assistant/chunk', seq: 2, time: 2,
+        data: { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: 'hi' } },
+      },
+    } as never)
+    expect(restarted.blocks[0]).toEqual({ kind: 'text', text: 'hi' })
+    expect(restarted.firstReplySeq).toBe(2)
+    const tooled = updateAssistantState(state, {
+      event: {
+        type: 'assistant/chunk', seq: 3, time: 3,
+        data: { turn: 1, step: 1, chunk: { type: 'tool-call-delta', index: 0, id: 7, argumentsDelta: '{' } },
+      },
+    } as never)
+    expect(tooled.blocks[0]).toMatchObject({ kind: 'tool-call', callId: '7', argsRaw: '{' })
+  })
+
+  it('rebuilds an interrupted Think row from a start-less window', () => {
+    const value = assembler([
+      at(40, 'assistant/chunk', {
+        turn: 5,
+        step: 2,
+        chunk: { type: 'reasoning-delta', index: 0, text: 'loaded think' },
+      }),
+      at(41, 'step/end', { turn: 5, step: 2 }),
+    ], true)
+    const recovered = snapshot(value)
+    expect(node(recovered, 'assistant-step')?.visibility).toBe('hidden')
+    expect(recovered.order.map(key => recovered.nodes.get(key)?.kind)).toEqual(['assistant-reasoning'])
+    expect(node(recovered, 'assistant-reasoning')?.data).toMatchObject({
+      status: 'interrupted',
+      blocks: [{ kind: 'reasoning', text: 'loaded think' }],
+    })
+  })
+
+  it('replays retry into start-less Assistant state', () => {
+    const value = assembler([
+      at(1, 'assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'text-delta', index: 0, text: 'first' },
+      }),
+      at(2, 'llm/retry', {
+        retryId: 'retry-fallback',
+        turn: 1,
+        step: 1,
+        provider: 'fake',
+        mode: 'normal',
+        policyKey: 'fake-normal',
+        retry: 1,
+        maxRetries: 2,
+        delayMs: 10,
+        failure: { code: 'TRANSPORT', message: 'temporary' },
+      }),
+    ], true)
+    expect(node(snapshot(value), 'assistant-step')).toBeUndefined()
+    expect(node(snapshot(value), 'assistant-reasoning')).toBeUndefined()
   })
 
   it('keeps one keyed Tool node from running through settlement and replays nested dispatch after prepend', () => {

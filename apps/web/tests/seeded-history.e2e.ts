@@ -26,7 +26,7 @@ import {
   launchWebScaffold, parseSeedFixture, realizeSeedFixture, recordFixture, renderSeedFixture, seedSession, watchConsole,
   webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot } from './support.ts'
+import { collapseProcessedGroups, expandProcessedGroups, newEnglishPage, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/seeded-history', import.meta.url))
 const SEED = fileURLToPath(new URL('./snapshots/seeded-history/seed.jsonl', import.meta.url))
@@ -283,6 +283,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
       timeout: 10_000,
     }).toBe(1)
     expect(await page.getByText('Context compacted', { exact: true }).count()).toBe(0)
+    await expandProcessedGroups(page)
     // Tool cards render from logged tool/call + tool/result alone (views are
     // host-recomputed per page; the generic card is the documented default).
     const toolRows = page.locator('[data-variant], [data-sample]')
@@ -291,6 +292,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
     // The pinned hazard: compaction shadows the surface on the model side
     // only — the prompt and full tool output must stay on screen.
     expect(await page.getByText(PROMPT, { exact: true }).count()).toBe(1)
+    await collapseProcessedGroups(page)
 
     const agent = scaffold.ctx.agents.get(SessionId(SEED_ID))
     if (agent === undefined) throw new Error('seeded session did not attach an agent')
@@ -395,6 +397,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
     // file links (not expand-in-place / not details). Runs after the golden
     // capture; still zero model calls.
     const fileLink = page.locator('[data-variant="read"] button').first()
+    await expandProcessedGroups(page)
     await fileLink.waitFor({ timeout: 10_000 })
     const frame = page.locator('[style*="grid-template-columns"]').first()
     expect(await frame.getAttribute('data-details-collapsed')).toBe('true')
@@ -411,6 +414,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
     }
     // Path label survives from the recorded args (a.txt).
     await expect.poll(() => page.getByText('a.txt', { exact: false }).count(), { timeout: 5_000 }).toBeGreaterThan(0)
+    await collapseProcessedGroups(page)
   })
 
   it.skipIf(MODE === 'record')('a Host open refusal keeps the reason and retries the same path', async () => {

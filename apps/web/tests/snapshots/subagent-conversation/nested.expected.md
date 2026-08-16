@@ -11,6 +11,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Give one concrete event sourcing example."
 - text: Give one concrete event sourcing example. {{clock}}
 - button "Copy":
   - img

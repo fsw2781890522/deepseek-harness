@@ -11,6 +11,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Explain event sourcing in one sentence."
 - text: Explain event sourcing in one sentence. {{clock}}
 - button "Copy":
   - img

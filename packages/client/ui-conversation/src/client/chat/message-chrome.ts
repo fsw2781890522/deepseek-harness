@@ -49,6 +49,23 @@ export function formatRunDuration(ms: number, t: RunDurationTranslate): string {
 }
 
 /**
+ * Process-group elapsed label: `x h x m x s`, omitting leading zero units.
+ * @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
+ * @returns Display string with `h`/`m`/`s` unit letters.
+ */
+export function formatProcessDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  const parts: string[] = []
+  if (hours > 0) parts.push(`${hours} h`)
+  if (hours > 0 || minutes > 0) parts.push(`${minutes} m`)
+  parts.push(`${seconds} s`)
+  return parts.join(' ')
+}
+
+/**
  * Sub-turn latency figure: one decimal under ten seconds, whole seconds
  * beyond. Unit-less so the locale template owns the second suffix.
  * @param ms - Latency in milliseconds (negatives clamp to zero).

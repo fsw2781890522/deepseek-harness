@@ -7,6 +7,8 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- navigation "Conversation prompts":
+  - button "Show the local preview URL."
 - text: Show the local preview URL. {{clock}}
 - button "Copy":
   - img
