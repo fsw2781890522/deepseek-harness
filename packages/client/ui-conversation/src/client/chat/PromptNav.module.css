@@ -1,12 +1,13 @@
 /* Prompt minimap: a zero-height sticky slot so ticks stay in the Chat
    scrollport gutter without growing scrollHeight. The nav sits in that
-   leftover left gutter, 24px from the scrollport's left edge, with a
+   leftover left gutter, up to 64px from the transcript column, with a
    20px floor so a narrow gutter does not clip. */
 
 .slot {
-  --dsh-prompt-nav-offset: max(
+  --dsh-prompt-nav-offset: clamp(
     20px,
-    calc((100% - var(--dsh-chat-content-width)) / 2 - 24px)
+    calc((100% - var(--dsh-chat-content-width)) / 2),
+    64px
   );
   position: sticky;
   top: calc((100% - var(--dsh-composer-height, 0px)) * 0.5);
