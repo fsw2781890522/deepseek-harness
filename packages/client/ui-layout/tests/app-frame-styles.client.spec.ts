@@ -6,10 +6,15 @@ import { describe, expect, it } from 'vitest'
 const css = readFileSync(fileURLToPath(new URL('../src/client/AppFrame.module.css', import.meta.url)), 'utf8')
 
 describe('AppFrame.module.css', () => {
+  it('keeps the shell frame transparent for native window vibrancy', () => {
+    const frameRule = css.match(/\.frame\s*\{([^{}]*)\}/s)?.[1] ?? ''
+    expect(frameRule).toContain('background: transparent;')
+  })
+
   it('owns the readable light/dark glass surface on the sidebar column', () => {
     const glass = new RegExp([
       String.raw`\.sidebarCol\s*\{`,
-      String.raw`[\s\S]*?background: color-mix\(in srgb, var\(--dsw-specific-sidebar-fill\) 60%, transparent\);`,
+      String.raw`[\s\S]*?background: color-mix\(in srgb, var\(--dsw-specific-sidebar-fill\) var\(--dsh-sidebar-tint-opacity, 60%\), transparent\);`,
       String.raw`[\s\S]*?-webkit-backdrop-filter: blur\(22px\) saturate\(120%\);`,
       String.raw`[\s\S]*?backdrop-filter: blur\(22px\) saturate\(120%\);`,
     ].join(''))

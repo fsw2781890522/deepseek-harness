@@ -23,6 +23,9 @@
   background: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover-solid) 78%, transparent);
   box-shadow: var(--dsw-shadow-lv2);
   backdrop-filter: blur(12px);
+  /* The prompt list scrolls inside an elevated floating surface. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   transform: translateY(-50%);
   pointer-events: none;
 }

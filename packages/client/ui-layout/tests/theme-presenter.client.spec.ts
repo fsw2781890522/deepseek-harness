@@ -11,10 +11,10 @@ import { DARK_ATTRIBUTE, ThemePresenter } from '@deepseek-ai/dsh-client-ui-layou
 const LIGHT_THEME_COLOR = 'rgb(255, 255, 255)'
 const DARK_THEME_COLOR = 'rgb(21, 21, 23)'
 
-function snapshot(colorScheme: 'light' | 'dark', tokens: Record<string, string> = {}): ThemeSnapshot {
+function snapshot(colorScheme: 'light' | 'dark', tokens: Record<string, string> = {}, sidebarTransparency = 40): ThemeSnapshot {
   // The presenter must key off colorScheme, not the id — keep them distinct.
   const active = { id: `${colorScheme}-test`, colorScheme, tokens }
-  return { preference: colorScheme, active, themes: [active], revision: 1 }
+  return { preference: colorScheme, sidebarTransparency, active, themes: [active], revision: 1 }
 }
 
 function clearThemePresentation(): void {
@@ -76,6 +76,14 @@ describe('ThemePresenter', () => {
     expect(document.body.style.getPropertyValue('--dsw-alias-fg')).toBe('')
   })
 
+  it('projects sidebar transparency as the inverse tint opacity', () => {
+    const presenter = new ThemePresenter()
+    presenter.apply(snapshot('dark', {}, 55))
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-tint-opacity')).toBe('45%')
+    presenter.apply(snapshot('dark', {}, 20))
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-tint-opacity')).toBe('80%')
+  })
+
   it('dispose removes color-scheme, the attribute, and every applied variable, sparing foreign inline styles', () => {
     document.body.style.setProperty('--foreign', 'kept')
     const presenter = new ThemePresenter()
@@ -85,6 +93,7 @@ describe('ThemePresenter', () => {
     expect(document.documentElement.style.colorScheme).toBe('')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
     expect(document.body.style.getPropertyValue('--dsw-alias-bg')).toBe('')
+    expect(document.body.style.getPropertyValue('--dsh-sidebar-tint-opacity')).toBe('')
     expect(document.body.style.getPropertyValue('--foreign')).toBe('kept')
     expect(meta?.isConnected).toBe(false)
   })

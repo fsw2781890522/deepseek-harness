@@ -13,6 +13,11 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  /* The Tauri WebView must expose the native Acrylic surface. Opaque page
+     backgrounds here turn every CSS backdrop-filter into a blur of one flat
+     color, and prevent the Windows compositor from reaching the window behind
+     the app. */
+  background: transparent;
 }
 
 body {
@@ -22,7 +27,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-bg-base);
+  background: transparent;
 }
 
 /* Form controls don't inherit the body font (UA sheets pin their families —

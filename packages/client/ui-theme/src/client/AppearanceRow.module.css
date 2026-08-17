@@ -23,6 +23,34 @@
   flex-wrap: wrap;
 }
 
+.transparencyControl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.transparencyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transparencyHeader output {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.transparencyControl input[type='range'] {
+  width: 100%;
+  accent-color: var(--dsw-alias-brand-primary);
+  cursor: pointer;
+}
+
 /* Appearance cube (figma '.Selector Cube' 276x82 r16, pad 20/32, centered
  * icon-over-label column, gap 4); flexed down from the figma width so all
  * three sit on one row in the 800 panel, wrapping when narrower. */

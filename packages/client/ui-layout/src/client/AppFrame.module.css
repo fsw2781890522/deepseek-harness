@@ -4,7 +4,9 @@
   grid-template-rows: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
+  /* Let the transparent Tauri/WebView surface reach the native Acrylic
+     backdrop. Opaque conversation surfaces still paint their own content. */
+  background: transparent;
   /* Collapse/expand animates the tracks on the deepsuite sider curve
      (--ds-ease-in-out / --ds-transition-duration-slow, ui-theme base.css). */
   transition: grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out);
@@ -29,7 +31,7 @@
      inner child. This lets Chromium sample and soften the frame behind the
      entire rail while the semantic fill keeps labels readable in both themes.
      40% of the softened frame remains visible for a clear glass effect. */
-  background: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-specific-sidebar-fill) var(--dsh-sidebar-tint-opacity, 60%), transparent);
   -webkit-backdrop-filter: blur(22px) saturate(120%);
   backdrop-filter: blur(22px) saturate(120%);
   border-right: 1px solid var(--dsw-alias-border-l1);

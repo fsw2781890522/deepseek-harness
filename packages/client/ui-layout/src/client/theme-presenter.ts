@@ -12,6 +12,9 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 /** Body attribute selecting the dark base palette in the token stylesheets. */
 export const DARK_ATTRIBUTE = 'data-ds-dark-theme'
 
+/** Inline variable consumed by the native-backed sidebar tint surface. */
+export const SIDEBAR_TINT_OPACITY_CSS_VARIABLE = '--dsh-sidebar-tint-opacity'
+
 /** Applies theme snapshots to the document; one instance per plugin fiber. */
 export class ThemePresenter {
   /** Token names this presenter wrote in the last apply (its retraction set). */
@@ -46,6 +49,12 @@ export class ThemePresenter {
       body.style.setProperty(name, value)
       this.appliedTokens.push(name)
     }
+    // The preference is the amount of native/background surface visible
+    // through the sidebar.  CSS needs the complementary tint opacity.
+    body.style.setProperty(
+      SIDEBAR_TINT_OPACITY_CSS_VARIABLE,
+      `${100 - snapshot.sidebarTransparency}%`,
+    )
     this.themeColorMeta.content = getComputedStyle(body).backgroundColor
     if (!this.themeColorMeta.isConnected) document.head.append(this.themeColorMeta)
   }
@@ -57,6 +66,7 @@ export class ThemePresenter {
     body.removeAttribute(DARK_ATTRIBUTE)
     for (const name of this.appliedTokens) body.style.removeProperty(name)
     this.appliedTokens = []
+    body.style.removeProperty(SIDEBAR_TINT_OPACITY_CSS_VARIABLE)
     this.themeColorMeta.remove()
   }
 }

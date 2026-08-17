@@ -41,6 +41,10 @@ function resolveThemeSheet(specifier: string): string {
 const imports = importOrder(baseCss)
 
 describe('web shell base.css', () => {
+  it('keeps the WebView root transparent so the native window backdrop can show through', () => {
+    expect(baseCss).toMatch(/html,\s*body,\s*#root\s*\{[\s\S]*?background:\s*transparent;/)
+  })
+
   it('publishes theme sheets from the built artifact plane', () => {
     expect(themeManifest.exports['./styles/*']).toBe('./lib/styles/*')
     expect(themeManifest.files).toContain('lib/styles')
