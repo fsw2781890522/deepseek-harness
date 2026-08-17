@@ -17,6 +17,7 @@ const COPY: Record<string, string> = {
   'appearance.light': 'Light',
   'appearance.dark': 'Dark',
   'appearance.system': 'System',
+  'appearance.transparency': 'Sidebar transparency',
 }
 
 /** Empty global standard-kit hooks (the row reads neither). */
@@ -33,11 +34,12 @@ function emptyWorkspaces() {
   return bindSnapshotSelector(store)
 }
 
-function mount(preference: ThemePreference = 'system') {
+function mount(preference: ThemePreference = 'system', transparency = 40) {
   // Real store instance — the sanctioned zero-machinery path for tests.
   const store = createAppearanceRowStore().create()
-  store.actions.sync(preference, 0)
+  store.actions.sync(preference, transparency, 0)
   const setTheme = vi.fn()
+  const setSidebarTransparency = vi.fn()
   const props: AppearanceRowComponentProps = {
     useSessions: emptySessions(),
     useWorkspaces: emptyWorkspaces(),
@@ -45,9 +47,10 @@ function mount(preference: ThemePreference = 'system') {
     actions: store.actions,
     t: (key: string) => COPY[key] ?? key,
     setTheme,
+    setSidebarTransparency,
   }
   render(<AppearanceRow {...props} />)
-  return { store, setTheme }
+  return { store, setTheme, setSidebarTransparency }
 }
 
 const pressed = (name: RegExp): string | null =>
@@ -68,8 +71,17 @@ describe('AppearanceRow', () => {
     expect(b.setTheme).toHaveBeenCalledWith('light')
     // No store write yet: selection is unchanged.
     expect(pressed(/Dark/)).toBe('true')
-    act(() => { b.store.actions.sync('light', 1) })
+    act(() => { b.store.actions.sync('light', 40, 1) })
     expect(pressed(/Light/)).toBe('true')
     expect(pressed(/Dark/)).toBe('false')
+  })
+
+  it('renders a keyboard-accessible transparency slider and routes drag updates', () => {
+    const b = mount('dark', 40)
+    const slider = screen.getByRole('slider', { name: 'Sidebar transparency' }) as HTMLInputElement
+
+    expect(slider.value).toBe('40')
+    fireEvent.change(slider, { target: { value: '55' } })
+    expect(b.setSidebarTransparency).toHaveBeenCalledWith(55)
   })
 })

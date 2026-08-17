@@ -43,6 +43,9 @@
   overflow-wrap: break-word;
   max-height: 160px;
   overflow: auto;
+  /* Notes are a scrolling l2 settings surface. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .action {

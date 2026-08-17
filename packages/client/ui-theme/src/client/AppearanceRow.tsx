@@ -20,6 +20,8 @@ import css from './AppearanceRow.module.css'
 export interface AppearanceRowInjected {
   /** Switch the theme preference. */
   setTheme: (id: ThemePreference) => void
+  /** Set the sidebar transparency percentage. */
+  setSidebarTransparency: (value: number) => void
 }
 
 /** Full component props: runtime share + store share + locale seat + injected face. */
@@ -39,8 +41,9 @@ const CUBES: readonly { id: ThemePreference; labelKey: ThemeKey; Icon: typeof Ic
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function AppearanceRow({ t, setTheme, useStore }: AppearanceRowComponentProps) {
+export function AppearanceRow({ t, setTheme, setSidebarTransparency, useStore }: AppearanceRowComponentProps) {
   const preference = useStore(s => s.preference)
+  const transparency = useStore(s => s.transparency)
   return (
     <div className={css.group}>
       <div className={css.title}>{t('appearance.title')}</div>
@@ -58,6 +61,21 @@ export function AppearanceRow({ t, setTheme, useStore }: AppearanceRowComponentP
           </button>
         ))}
       </div>
+      <label className={css.transparencyControl}>
+        <span className={css.transparencyHeader}>
+          <span>{t('appearance.transparency')}</span>
+          <output>{transparency}%</output>
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={transparency}
+          aria-label={t('appearance.transparency')}
+          onChange={(event) => { setSidebarTransparency(Number(event.currentTarget.value)) }}
+        />
+      </label>
     </div>
   )
 }

@@ -21,7 +21,9 @@ import { createAppearanceRowStore } from './settings-store.ts'
 import { installThemeStyles } from './styles.ts'
 import { en, zh, type ThemeKey } from './locales.ts'
 import {
-  DEFAULT_PREFERENCE, isThemePreference, THEME_PREFERENCE_FIELD, THEME_SETTINGS_NAMESPACE,
+  DEFAULT_PREFERENCE, DEFAULT_SIDEBAR_TRANSPARENCY, isThemePreference,
+  normalizeSidebarTransparency, SIDEBAR_TRANSPARENCY_FIELD, THEME_PREFERENCE_FIELD,
+  THEME_SETTINGS_NAMESPACE,
   type ThemePreference, type ThemeSettings,
 } from '../theme-settings.ts'
 
@@ -75,6 +77,8 @@ export interface ThemeDefinition {
 export interface ThemeSnapshot {
   /** The persisted preference (may be `system`). */
   preference: ThemePreference
+  /** Percentage of native/background surface visible through the sidebar tint. */
+  sidebarTransparency: number
   /**
    * The resolved active theme (`system` resolved via prefers-color-scheme)
    * with override layers folded into its tokens (seq order, later layers win
@@ -153,6 +157,7 @@ export class ThemeRuntime {
   private readonly host: SettingsScope<ThemeSettings>
   private themes: ThemeDefinition[] = [...BUILTIN_THEMES]
   private preference: ThemePreference
+  private sidebarTransparency: number
   private revision = 0
   private snapshot: ThemeSnapshot
   private readonly media: MediaQueryList | undefined
@@ -169,6 +174,7 @@ export class ThemeRuntime {
     this.ctx = ctx
     this.host = host
     this.preference = DEFAULT_PREFERENCE
+    this.sidebarTransparency = DEFAULT_SIDEBAR_TRANSPARENCY
     // Non-browser runs (node e2e booting the client tree) have no matchMedia.
     this.media = typeof matchMedia === 'undefined' ? undefined : matchMedia('(prefers-color-scheme: dark)')
     this.snapshot = this.buildSnapshot()
@@ -230,11 +236,26 @@ export class ThemeRuntime {
     this.publish()
   }
 
+  /** Set and persist the sidebar's native/background transparency percentage. */
+  setSidebarTransparency(value: number): void {
+    const next = normalizeSidebarTransparency(value)
+    if (this.sidebarTransparency === next) return
+    this.sidebarTransparency = next
+    void this.host.set(SIDEBAR_TRANSPARENCY_FIELD, next)
+    this.publish()
+  }
+
   /** Adopt the scope's accepted durable preference without writing it back. */
   private adopt(): void {
     const section = this.host.getSnapshot().value
-    if (section === undefined || this.preference === section.preference) return
-    this.preference = section.preference
+    if (section === undefined) return
+    const nextPreference = section.preference
+    const nextTransparency = normalizeSidebarTransparency(
+      section.sidebarTransparency ?? DEFAULT_SIDEBAR_TRANSPARENCY,
+    )
+    if (this.preference === nextPreference && this.sidebarTransparency === nextTransparency) return
+    this.preference = nextPreference
+    this.sidebarTransparency = nextTransparency
     this.publish()
   }
 
@@ -301,6 +322,7 @@ export class ThemeRuntime {
     if (active === undefined) throw new Error(`theme registry lost "${resolvedId}"`)
     return Object.freeze({
       preference: this.preference,
+      sidebarTransparency: this.sidebarTransparency,
       active: this.composeActive(active),
       themes: Object.freeze([...this.themes]),
       revision: this.revision,
@@ -393,7 +415,7 @@ export function apply(ctx: ClientContext): void {
   const store = createAppearanceRowStore()
   let bound: BoundActions<typeof store> | undefined
   const sync = (snapshot: ThemeSnapshot): void => {
-    bound?.sync(snapshot.preference, snapshot.revision)
+    bound?.sync(snapshot.preference, snapshot.sidebarTransparency, snapshot.revision)
   }
   ctx.on('theme/change', sync)
   const injected = (actions: BoundActions<typeof store>): AppearanceRowInjected => {
@@ -403,6 +425,7 @@ export function apply(ctx: ClientContext): void {
     sync(theme.getTheme())
     return {
       setTheme: (id) => { theme.setTheme(id) },
+      setSidebarTransparency: (value) => { theme.setSidebarTransparency(value) },
     }
   }
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({

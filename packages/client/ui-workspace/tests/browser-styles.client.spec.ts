@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(fileURLToPath(new URL('../src/client/WorkspaceBrowser.module.css', import.meta.url)), 'utf8')
 const rowsCss = readFileSync(fileURLToPath(new URL('../src/client/rows/Rows.module.css', import.meta.url)), 'utf8')
+const browserTsx = readFileSync(fileURLToPath(new URL('../src/client/WorkspaceBrowser.tsx', import.meta.url)), 'utf8')
 
 /**
  * Declarations of one selector rule, keyed by property with whitespace collapsed.
@@ -51,7 +52,6 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(listArea?.get('margin-left')).toBe('-4px')
     expect(listArea?.get('padding-left')).toBe('4px')
     expect(listArea?.get('margin-right')).toBe('calc(-1 * var(--dsh-session-list-edge-inset))')
-    expect(declarations('.fade')?.get('right')).toBe('var(--dsh-session-list-edge-inset)')
     expect(list?.get('margin-right')).toBe('var(--dsh-session-list-scrollbar-offset)')
     expect(list?.get('margin-left')).toBe('-4px')
     expect(list?.get('padding-left')).toBe('4px')
@@ -96,8 +96,12 @@ describe('WorkspaceBrowser.module.css list', () => {
     }
   })
 
-  it('keeps the compact fade, overflow control, search field, and row heights', () => {
-    expect(declarations('.fade')?.get('height')).toBe('24px')
+  it('does not paint a fixed bottom fade over the session list', () => {
+    expect(declarations('.fade')).toBeUndefined()
+    expect(browserTsx).not.toContain('css.fade')
+  })
+
+  it('keeps the overflow control, search field, and row heights', () => {
     expect(declarations('.sessionOverflowButton')?.get('height')).toBe('28px')
     expect(declarations('.searchExpanded')?.get('height')).toBe('30px')
     expect(rowDeclarations('.projectRow')?.get('height')).toBe('34px')

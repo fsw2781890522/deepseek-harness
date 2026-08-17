@@ -11,6 +11,14 @@ export const THEME_SETTINGS_NAMESPACE = 'ui-theme'
 /** Field carrying the selected built-in theme preference. */
 export const THEME_PREFERENCE_FIELD = 'preference'
 
+/** Field carrying the persisted sidebar transparency percentage. */
+export const SIDEBAR_TRANSPARENCY_FIELD = 'sidebarTransparency'
+
+/** Sidebar transparency range exposed by the Appearance settings row. */
+export const SIDEBAR_TRANSPARENCY_MIN = 0
+export const SIDEBAR_TRANSPARENCY_MAX = 100
+export const DEFAULT_SIDEBAR_TRANSPARENCY = 40
+
 /** Theme preference persisted by the product Appearance row. */
 export type ThemePreference = typeof THEME_PREFERENCES[number]
 
@@ -21,12 +29,28 @@ export const DEFAULT_PREFERENCE: ThemePreference = 'system'
 export interface ThemeSettings {
   /** Selected built-in preference. */
   preference: ThemePreference
+  /** Percentage of the native/background surface visible through the sidebar tint. */
+  sidebarTransparency: number
 }
 
 /** Durable theme schema; also the wire envelope the browser scope validates against. */
 export const ThemeSettingsSchema: z<ThemeSettings> = z.object({
   [THEME_PREFERENCE_FIELD]: z.union([...THEME_PREFERENCES]).default(DEFAULT_PREFERENCE),
+  [SIDEBAR_TRANSPARENCY_FIELD]: z.number()
+    .step(1)
+    .min(SIDEBAR_TRANSPARENCY_MIN)
+    .max(SIDEBAR_TRANSPARENCY_MAX)
+    .default(DEFAULT_SIDEBAR_TRANSPARENCY),
 })
+
+/** Keep settings writes safe when an untyped caller crosses the client boundary. */
+export function normalizeSidebarTransparency(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SIDEBAR_TRANSPARENCY
+  return Math.min(
+    SIDEBAR_TRANSPARENCY_MAX,
+    Math.max(SIDEBAR_TRANSPARENCY_MIN, Math.round(value)),
+  )
+}
 
 /**
  * Narrow one wire or registry value to a persistable preference.

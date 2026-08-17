@@ -46,8 +46,9 @@
   white-space: nowrap;
 }
 
-/* Full-viewport layer (figma Mask 501:29946 #000@24%): mask tokens match the
-   Modal primitive (--dsw-alias-bg-mask-1 + --dsw-mask-blur). */
+/* Full-viewport layer.  Keep this as one opaque-enough theme tint.  A second
+   CSS backdrop-filter here would be composited on top of the native Acrylic
+   surface, which causes sidebar ghosting and disappears on focus changes. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -60,8 +61,7 @@
 .mask {
   position: absolute;
   inset: 0;
-  background: var(--dsw-alias-bg-mask-1);
-  backdrop-filter: var(--dsw-mask-blur);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 86%, transparent);
 }
 
 /* Panel (figma Settings 501:29947): r24, white, lv3 shadow (figma effects
