@@ -10,7 +10,7 @@ Harness-owned HTTP (LLM adapters, Host `fetch`, and the desktop updater) must re
 
 ## Decision
 
-`@deepseek-ai/dsh-http-proxy` (`packages/boot/http-proxy`) wraps `globalThis.fetch` in the Node process: direct first, then `http://127.0.0.1:{port}` through undici `ProxyAgent`. It registers settings namespace `http-proxy` with field `port` (default `7897`, live). It does not register, enable, or disable any tool. Agent tool availability stays with the active agent preset, including phases that disable `web_search` / `web_fetch` / `tool-web`.
+`@deepseek-ai/dsh-http-proxy` (`packages/boot/http-proxy`) wraps `globalThis.fetch` in the Node process: direct first, then `http://127.0.0.1:{port}` through undici `ProxyAgent`. `directTimeoutMs` (default 5000) is the budget for the direct attempt to return headers; the wrapper clears that timer when `fetch` resolves so an SSE body is not aborted. `AbortSignal.timeout` cannot be disarmed after headers and is not used here. It registers settings namespace `http-proxy` with field `port` (default `7897`, live). It does not register, enable, or disable any tool. Agent tool availability stays with the active agent preset, including phases that disable `web_search` / `web_fetch` / `tool-web`.
 
 `dsh-base` inserts the plugin after the settings row so CLI, Web, and headless share the wrapper. `ui-settings-general` registers ownerless General item `proxy-port` (order 80) once `settingsScope` exists. The row writes `http-proxy.port` and states that it does not change which agent tools are available.
 
@@ -36,4 +36,4 @@ Settings can set the mixed-port once. Harness-owned Node HTTP and desktop update
 
 ## Testing
 
-Package tests cover skip/NO_PROXY, direct-then-proxy wrap (transport failure, timeout, caller abort, HTTP status, combined errors), undici HTTP forward-proxy, apply without settings, live settings port change, invalid config, and the empty invariant companion. `ui-settings-general` tests cover the Proxy port row and `proxy-port` registration when `settingsScope` is present. Desktop `update` unit tests cover port resolution (env, URL, YAML, default) and loopback skip. Do not add web-tool e2e or change anchored-standard tool-bootstrap to prove this path.
+Package tests cover skip/NO_PROXY, direct-then-proxy wrap (transport failure, header timeout, caller abort, HTTP status, combined errors, streaming body after headers), undici HTTP forward-proxy, apply without settings, live settings port change, invalid config, and the empty invariant companion. `ui-settings-general` tests cover the Proxy port row and `proxy-port` registration when `settingsScope` is present. Desktop `update` unit tests cover port resolution (env, URL, YAML, default) and loopback skip. Do not add web-tool e2e or change anchored-standard tool-bootstrap to prove this path.

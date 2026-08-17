@@ -28,7 +28,7 @@ Namespace `http-proxy`, field `port`, live. The General **代理端口** row wri
 
 The wrapper captures the current `globalThis.fetch` and replaces it for the plugin fiber. Each non-loopback request:
 
-1. Calls that captured `fetch` with an abort budget of `directTimeoutMs`.
+1. Calls that captured `fetch` with a `directTimeoutMs` budget until headers arrive; the timer is cleared when `fetch` resolves so an SSE body is not aborted.
 2. On a transport failure or that timeout, retries through `http://127.0.0.1:{port}` using undici `ProxyAgent` (HTTP origin-form and HTTPS CONNECT).
 3. Leaves HTTP status responses (including 4xx/5xx) on the direct path — those are not transport failures.
 

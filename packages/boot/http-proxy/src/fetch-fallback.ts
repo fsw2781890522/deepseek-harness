@@ -11,7 +11,10 @@ import { shouldSkipProxy } from './skip-proxy.ts'
 export interface FetchFallbackOptions {
   /** `http://127.0.0.1:{port}` used after a failed direct attempt. */
   proxyUrl: string
-  /** Abort budget for the direct attempt. */
+  /**
+   * Budget for the direct attempt to return headers.
+   * Cleared once `fetch` resolves so a long SSE body is not aborted.
+   */
   directTimeoutMs: number
   /**
    * Override the loopback/`NO_PROXY` skip. Tests pass `() => false` so a
@@ -84,16 +87,19 @@ export function wrapGlobalFetch(options: FetchFallbackOptions): () => void {
     const url = requestUrl(input)
     if (url === undefined || skip(url)) return await original(input, init)
 
-    const timeout = AbortSignal.timeout(options.directTimeoutMs)
+    const connect = new AbortController()
+    const timer = setTimeout(() => {
+      connect.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError'))
+    }, options.directTimeoutMs)
     const userSignal = init?.signal
     const signal = userSignal === undefined || userSignal === null
-      ? timeout
-      : AbortSignal.any([userSignal, timeout])
+      ? connect.signal
+      : AbortSignal.any([userSignal, connect.signal])
     try {
       return await original(input, { ...init, signal })
     } catch (error: unknown) {
       if (userSignal?.aborted === true) throw error
-      const timedOut = timeout.aborted
+      const timedOut = connect.signal.aborted
       if (!timedOut && !isRetryableNetworkError(error)) throw error
       try {
         return await proxyFetch(input, init)
@@ -103,6 +109,8 @@ export function wrapGlobalFetch(options: FetchFallbackOptions): () => void {
           { cause: proxyError },
         )
       }
+    } finally {
+      clearTimeout(timer)
     }
   }
 

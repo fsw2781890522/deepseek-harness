@@ -67,6 +67,40 @@ describe('wrapGlobalFetch', () => {
     expect(proxyFetch).toHaveBeenCalledOnce()
   })
 
+  it('does not abort a streaming body after headers arrive inside the direct budget', async () => {
+    const proxyFetch = vi.fn(async () => new Response('proxied'))
+    globalThis.fetch = async (_input, init) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const abort = (): void => {
+            controller.error(init?.signal?.reason instanceof Error
+              ? init.signal.reason
+              : new DOMException('Aborted', 'AbortError'))
+          }
+          if (init?.signal?.aborted === true) {
+            abort()
+            return
+          }
+          init?.signal?.addEventListener('abort', abort, { once: true })
+          setTimeout(() => {
+            controller.enqueue(new TextEncoder().encode('later'))
+            controller.close()
+          }, 40)
+        },
+      })
+      return new Response(stream)
+    }
+    wrapGlobalFetch({
+      proxyUrl: 'http://127.0.0.1:7897',
+      directTimeoutMs: 20,
+      skipProxy: () => false,
+      proxyFetch,
+    })
+    const response = await fetch('https://example.com/stream')
+    expect(await response.text()).toBe('later')
+    expect(proxyFetch).not.toHaveBeenCalled()
+  })
+
   it('does not proxy a caller abort', async () => {
     const proxyFetch = vi.fn(async () => new Response('proxied'))
     globalThis.fetch = async (_input, init) => {

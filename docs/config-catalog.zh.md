@@ -882,12 +882,12 @@ export interface Config {
 export interface Config {
   /** Composition default for {@link HttpProxySettings.port} when settings has no user layer. */
   port?: number
-  /** Direct-attempt abort budget in milliseconds before the proxy retry. */
+  /** Budget in milliseconds for the direct attempt to return headers before the proxy retry. */
   directTimeoutMs?: number
 }
 ```
 
-来源：[`packages/boot/http-proxy/src/index.ts:43`](../packages/boot/http-proxy/src/index.ts)
+来源：[`packages/boot/http-proxy/src/index.ts:42`](../packages/boot/http-proxy/src/index.ts)
 
 <a id="deepseek-aidsh-invariants"></a>
 

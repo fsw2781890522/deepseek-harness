@@ -7,7 +7,7 @@ export const HTTP_PROXY_PORT_FIELD = 'port'
 /** Default Clash/V2Ray mixed port when the user-settings document has no override. */
 export const DEFAULT_PROXY_PORT = 7897
 
-/** Direct-attempt budget before the wrapper retries through the local proxy. */
+/** Budget for the direct attempt to return headers before the proxy retry. */
 export const DEFAULT_DIRECT_TIMEOUT_MS = 5000
 
 /**

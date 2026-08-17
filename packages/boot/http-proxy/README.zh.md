@@ -28,7 +28,7 @@ Namespace `http-proxy`，字段 `port`，即时生效。通用设置里的**代�
 
 包装捕获当前 `globalThis.fetch`，并在插件 fiber 存活期间替换它。每个非回环请求：
 
-1. 用 `directTimeoutMs` 的中止预算调用该捕获的 `fetch`。
+1. 用 `directTimeoutMs` 作为直连返回响应头的预算调用该捕获的 `fetch`；`fetch` 一旦 resolve 即清除该计时器，因此不会中止 SSE 响应体。
 2. 传输失败或该超时后，经 `http://127.0.0.1:{port}` 用 undici `ProxyAgent` 重试（HTTP origin-form 与 HTTPS CONNECT）。
 3. 直连路径上的 HTTP 状态（含 4xx/5xx）原样返回——那不是传输失败。
 

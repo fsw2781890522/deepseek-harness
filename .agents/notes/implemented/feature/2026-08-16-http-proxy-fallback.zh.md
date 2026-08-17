@@ -10,7 +10,7 @@ Harness 自有 HTTP（LLM 适配器、Host `fetch`、桌面更新器）必须在
 
 ## 决策
 
-`@deepseek-ai/dsh-http-proxy`（`packages/boot/http-proxy`）在 Node 进程里包装 `globalThis.fetch`：先直连，再经 undici `ProxyAgent` 走 `http://127.0.0.1:{port}`。它注册 settings namespace `http-proxy`，字段 `port`（默认 `7897`，即时生效）。它不注册、启用或禁用任何工具。智能体工具是否可用仍由当前 agent preset 决定，包括禁用 `web_search` / `web_fetch` / `tool-web` 的阶段。
+`@deepseek-ai/dsh-http-proxy`（`packages/boot/http-proxy`）在 Node 进程里包装 `globalThis.fetch`：先直连，再经 undici `ProxyAgent` 走 `http://127.0.0.1:{port}`。`directTimeoutMs`（默认 5000）是直连返回响应头的预算；`fetch` resolve 后包装会清除该计时器，因此不会中止 SSE 响应体。`AbortSignal.timeout` 在响应头到达后无法解除，此处不使用。它注册 settings namespace `http-proxy`，字段 `port`（默认 `7897`，即时生效）。它不注册、启用或禁用任何工具。智能体工具是否可用仍由当前 agent preset 决定，包括禁用 `web_search` / `web_fetch` / `tool-web` 的阶段。
 
 `dsh-base` 在 settings 行之后插入该插件，因此 CLI、Web 和无头共享该包装。`ui-settings-general` 在存在 `settingsScope` 时注册无主通用项 `proxy-port`（order 80）。该行写入 `http-proxy.port`，并说明它不改变智能体工具是否可用。
 
@@ -36,4 +36,4 @@ Harness 自有 HTTP（LLM 适配器、Host `fetch`、桌面更新器）必须在
 
 ## 测试
 
-包测试覆盖 skip/NO_PROXY、直连再代理包装（传输失败、超时、调用方中止、HTTP 状态、组合错误）、undici HTTP 正向代理、无 settings 的 apply、settings 端口热更新、非法 config，以及空 invariant companion。`ui-settings-general` 测试覆盖代理端口行，以及存在 `settingsScope` 时的 `proxy-port` 注册。桌面 `update` 单元测试覆盖端口解析（环境变量、URL、YAML、默认值）和回环跳过。不要为证明这条路径去加 web-tool e2e 或改 anchored-standard tool-bootstrap。
+包测试覆盖 skip/NO_PROXY、直连再代理包装（传输失败、响应头超时、调用方中止、HTTP 状态、组合错误、响应头后的流式响应体）、undici HTTP 正向代理、无 settings 的 apply、settings 端口热更新、非法 config，以及空 invariant companion。`ui-settings-general` 测试覆盖代理端口行，以及存在 `settingsScope` 时的 `proxy-port` 注册。桌面 `update` 单元测试覆盖端口解析（环境变量、URL、YAML、默认值）和回环跳过。不要为证明这条路径去加 web-tool e2e 或改 anchored-standard tool-bootstrap。

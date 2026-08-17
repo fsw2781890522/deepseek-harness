@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-16-http-proxy-fallback.md
-2026-08-16-http-proxy-fallback.md: d50e608d9c20926e28fa9739a604efd003bb4818
-2026-08-16-http-proxy-fallback.zh.md: 5e7c6912aa162336701ad416d2e94b7362962da8
+2026-08-16-http-proxy-fallback.md: d7d3989746e4d53749ff4b58e3f7adbea5557d95
+2026-08-16-http-proxy-fallback.zh.md: 3723e737d08a8011e9dc1a2d1a079baffe875184
