@@ -1,7 +1,9 @@
 // Modal: controlled full-viewport dialog (create-workspace and similar).
 // The overlay portals to this document's body so ancestor stacking contexts
-// cannot leave sticky page controls above the mask. This is still an in-page
-// WebUI dialog; it never creates or targets another browser/native window.
+// cannot leave sticky page controls above the mask. Its z-index sits above
+// the Settings sidebar stacking context; see Modal.module.css.
+// This is still an in-page WebUI dialog; it never creates or targets another
+// browser/native window.
 
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'

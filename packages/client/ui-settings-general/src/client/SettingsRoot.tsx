@@ -48,7 +48,11 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // A body-portaled confirmation (provider delete, preset delete) is a
+      // second aria-modal dialog; Escape must close only that top layer.
+      if (document.querySelectorAll('[role="dialog"][aria-modal="true"]').length > 1) return
+      onClose()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => { document.removeEventListener('keydown', onKeyDown) }

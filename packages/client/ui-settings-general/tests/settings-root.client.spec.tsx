@@ -154,6 +154,24 @@ describe('SettingsPanel close paths', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
+  it('leaves the panel open when a stacked confirmation dialog is present', () => {
+    mount()
+    openPanel()
+    const stacked = document.createElement('div')
+    stacked.setAttribute('role', 'dialog')
+    stacked.setAttribute('aria-modal', 'true')
+    stacked.setAttribute('aria-label', 'Delete openai?')
+    document.body.append(stacked)
+    try {
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.getByRole('dialog', { name: 'Settings Title' })).toBeTruthy()
+    } finally {
+      stacked.remove()
+    }
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Settings Title' })).toBeNull()
+  })
+
   it('lands focus on the close button when the dialog opens', () => {
     mount()
     openPanel()

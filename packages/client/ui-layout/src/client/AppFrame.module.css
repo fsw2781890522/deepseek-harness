@@ -41,7 +41,8 @@
    Raise the owning grid item as one stacking context while the dialog exists;
    otherwise center-column docks (composer, prompt navigation, and details
    overlays) can paint above the fixed settings mask even when the dialog has a
-   larger local z-index. */
+   larger local z-index. Body-portaled confirmation dialogs (Modal at 1050)
+   must sit above this 1001 context or they render behind Settings. */
 .sidebarCol:has([role='dialog']) {
   position: relative;
   z-index: 1001;

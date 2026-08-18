@@ -2,7 +2,10 @@
 .root {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  /* Above AppFrame's elevated Settings column (z-index 1001). Menu, Toast,
+     and OnboardingSurface stay at 1100 so a portaled menu still paints on
+     top of this dialog. */
+  z-index: 1050;
   display: flex;
   align-items: center;
   justify-content: center;

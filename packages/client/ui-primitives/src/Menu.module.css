@@ -38,7 +38,7 @@
 
 /* Portal mode: fixed in the viewport, coordinates supplied inline from the
  * anchor rect (side/align resolved in JS, the in-place offset rules above
- * don't apply). Portaled lists must layer above modal overlays (z 1000) —
+ * don't apply). Portaled lists must layer above modal overlays (z 1050) —
  * an anchor inside a dialog still expects its menu on top. */
 .portal {
   position: fixed;
