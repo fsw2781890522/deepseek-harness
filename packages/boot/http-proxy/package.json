@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-http-proxy",
   "description": "Process fetch wrapper: direct-first then a local HTTP proxy. Owns no agent tools.",
-  "version": "0.1.1-rc.1",
+  "version": "0.1.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
