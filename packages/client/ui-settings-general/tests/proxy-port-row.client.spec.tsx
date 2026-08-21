@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { ProxyPortRow } from '../src/client/ProxyPortRow.tsx'
 import type { ProxyPortRowComponentProps } from '../src/client/ProxyPortRow.tsx'
 import { createProxyPortStore } from '../src/client/proxy-port-store.ts'

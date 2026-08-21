@@ -20,6 +20,10 @@ import type { ChatViewSlotProps, RenderMessageImages } from '../contract/slots.t
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
 import { formatRunDuration } from './message-chrome.ts'
+import { groupChatFlow } from './process-flow.ts'
+import { ProcessGroup } from './ProcessGroup.tsx'
+import { PromptNav } from './PromptNav.tsx'
+import { promptNavItems, resolveActivePromptKey } from './prompt-nav.ts'
 import css from './ChatView.module.css'
 
 const FOLLOW_THRESHOLD = 24
@@ -96,6 +100,23 @@ function scrollPosition(list: HTMLElement, scrollport: HTMLElement): ChatScrollP
   }
 }
 
+/** Select the last loaded prompt whose row has crossed the reading probe. */
+function activePromptFromViewport(
+  list: HTMLElement,
+  scrollport: HTMLElement,
+  keys: readonly string[],
+): string | null {
+  const viewport = scrollport.getBoundingClientRect()
+  const composer = scrollport.querySelector<HTMLElement>('[data-composer-seat]')
+  const visibleBottom = composer?.getBoundingClientRect().top ?? viewport.bottom
+  const height = Math.max(0, visibleBottom - viewport.top)
+  const probeY = viewport.top + Math.min(48, height * 0.2)
+  return resolveActivePromptKey(keys, (key) => {
+    const row = anchorElement(list, key)
+    return row === null ? null : row.getBoundingClientRect().top
+  }, probeY)
+}
+
 /** Host/OS refusal text for the file-open dialog; empty throws keep a locale fallback. */
 function openFailureMessage(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error)
@@ -170,6 +191,13 @@ export function ChatView({
   const openError = useSession(s => s.openError)
   const hasMore = useSession(s => s.hasMore)
   const loadingOlder = useSession(s => s.loadingOlder)
+  // Click-local busy: the Session snapshot is batched, so the paging control
+  // must lock immediately even when the service returns asynchronously.
+  const [pagingBusy, setPagingBusy] = useState(false)
+  const [pagingQueued, setPagingQueued] = useState(false)
+  const pagingLockRef = useRef(false)
+  const pagingQueuedRef = useRef(false)
+  const olderBusy = loadingOlder || pagingBusy
   const selectedCallId = useStore(s => s.selection?.callId)
   const [fileOpenError, setFileOpenError] = useState<{ path: string; message: string } | null>(null)
   const [fileOpenBusy, setFileOpenBusy] = useState(false)
@@ -210,6 +238,19 @@ export function ChatView({
     () => inbox.filter(item => item.placement === 'steering'),
     [inbox],
   )
+  const flowItems = useMemo(
+    () => groupChatFlow(order, key => nodeStore.get(key)?.kind, !running),
+    [order, nodeStore, running],
+  )
+  const promptItems = useMemo(
+    () => promptNavItems(order, key => nodeStore.get(key), {
+      empty: t('chat.promptNav.empty'),
+      image: t('image.label'),
+      images: count => t('chat.promptNav.images', { count }),
+    }),
+    [order, nodeStore, t],
+  )
+  const promptKeys = useMemo(() => promptItems.map(item => item.key), [promptItems])
   const renderMessageImages = useCallback<RenderMessageImages>(
     owner => renderSlot('conversation.message.images', { ...owner, loadImage }),
     [loadImage, renderSlot],
@@ -233,6 +274,10 @@ export function ChatView({
    *  scroll-driven at-bottom chrome re-render (which would snap inertial
    *  scrolls the rest of the way to the floor). */
   const followSigRef = useRef<string | null>(null)
+  const promptKeysRef = useRef(promptKeys)
+  promptKeysRef.current = promptKeys
+  const activePromptKeyRef = useRef<string | null>(null)
+  const [activePromptKey, setActivePromptKey] = useState<string | null>(null)
 
   const firstKey = order[0]
   const firstSeq = firstKey === undefined ? null : nodeStore.get(firstKey)?.anchorSeq ?? null
@@ -248,6 +293,11 @@ export function ChatView({
     atBottomRef.current = true
     setAtBottom(true)
     chatScroll.save(null)
+    const next = promptKeysRef.current.at(-1) ?? null
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
   }
 
   useLayoutEffect(() => {
@@ -346,6 +396,13 @@ export function ChatView({
     if (isAtBottom) chatScroll.save(null)
     else if (position !== null) chatScroll.save(position)
     observedTopRef.current = el.scrollTop
+    const next = isAtBottom
+      ? promptKeysRef.current.at(-1) ?? null
+      : activePromptFromViewport(local, el, promptKeysRef.current)
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
   }
 
   // Bind the scroll listener on the resolved scrollport once per mount;
@@ -362,6 +419,20 @@ export function ChatView({
       el.removeEventListener('scroll', onScroll)
     }
   }, [])
+
+  useLayoutEffect(() => {
+    const local = listRef.current
+    /* v8 ignore next -- ref-null guard: React attaches the ref before layout effects run. */
+    if (local === null) return
+    const el = scrollerOf(local)
+    const next = atBottomRef.current
+      ? promptKeysRef.current.at(-1) ?? null
+      : activePromptFromViewport(local, el, promptKeysRef.current)
+    if (next !== activePromptKeyRef.current) {
+      activePromptKeyRef.current = next
+      setActivePromptKey(next)
+    }
+  }, [promptKeys])
 
   // The ref starts null and is assigned every render, so the placeholder
   // initializer a function initial value would need never exists.
@@ -397,6 +468,16 @@ export function ChatView({
   }, [loadingOlder])
 
   const loadOlderAnchored = (): void => {
+    // The initial history window is opened asynchronously. Preserve one early
+    // click and start it as soon as the session is ready, while ignoring
+    // duplicate gestures during the same request.
+    if (olderBusy || pagingLockRef.current || pagingQueuedRef.current) return
+    if (openState !== 'open') {
+      pagingQueuedRef.current = true
+      setPagingQueued(true)
+      return
+    }
+    pagingLockRef.current = true
     const local = listRef.current
     /* v8 ignore next -- ref-null guard: the paging button renders inside the list tree. */
     if (local !== null) {
@@ -409,8 +490,25 @@ export function ChatView({
         }
       }
     }
-    loadOlder()
+    setPagingBusy(true)
+    void Promise.resolve(loadOlder()).finally(() => {
+      pagingLockRef.current = false
+      setPagingBusy(false)
+    })
   }
+
+  useEffect(() => {
+    if (openState !== 'open' || !pagingQueuedRef.current || olderBusy) return
+    pagingQueuedRef.current = false
+    setPagingQueued(false)
+    loadOlderAnchored()
+  }, [openState, olderBusy])
+
+  useEffect(() => {
+    if (openState !== 'error') return
+    pagingQueuedRef.current = false
+    setPagingQueued(false)
+  }, [openState])
 
   return (
     <div className={openState === 'loading' ? `${css.root} ${css.historyLoadingRoot}` : css.root}>
@@ -445,27 +543,50 @@ export function ChatView({
           )}
           {hasMore && (
             <div className={css.older}>
-              <button type="button" disabled={loadingOlder} onClick={loadOlderAnchored}>
-                {loadingOlder ? t('loading') : t('chat.loadOlder')}
+              <button
+                type="button"
+                disabled={olderBusy || pagingQueued}
+                aria-busy={olderBusy || pagingQueued || undefined}
+                aria-label={t('chat.loadOlder')}
+                onClick={loadOlderAnchored}
+              >
+                {olderBusy || pagingQueued ? t('loading') : t('chat.loadOlder')}
               </button>
             </div>
           )}
-          {order.map(nodeKey => (
-            <ChatNodeSeat
-              key={nodeKey}
-              nodeKey={nodeKey}
-              useSession={useSession}
-              selectedCallId={selectedCallId}
-              cwd={cwd}
-              openFile={requestOpenFile}
-              inspectCall={inspectCall}
-              forkAt={forkAt}
-              renderMessageImages={renderMessageImages}
-              fileMentions={fileMentions}
-              renderSlot={renderSlot}
-              t={t}
-            />
-          ))}
+          {flowItems.map(item => item.type === 'group'
+            ? (
+              <ProcessGroup
+                key={`process:${item.keys[0]}:${item.keys.at(-1)}`}
+                keys={item.keys}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={requestOpenFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                renderMessageImages={renderMessageImages}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            )
+            : (
+              <ChatNodeSeat
+                key={item.key}
+                nodeKey={item.key}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={requestOpenFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                renderMessageImages={renderMessageImages}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            ))}
           {/* No pending placeholders: questions (ui-user-questions) and approvals
               (ApprovalPanel) both take over the composer, so a flow card would
               double-render the same wait. */}

@@ -1042,7 +1042,8 @@ describe('ChatView', () => {
       .mockResolvedValueOnce(undefined)
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' })).toBeTruthy()
@@ -1062,7 +1063,8 @@ describe('ChatView', () => {
       .mockRejectedValueOnce('permission denied')
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('notes.md') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('permission denied')
@@ -1077,7 +1079,8 @@ describe('ChatView', () => {
       .mockRejectedValueOnce(new Error(''))
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('empty.ts') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('无法打开此文件')
@@ -1089,7 +1092,8 @@ describe('ChatView', () => {
       .mockRejectedValueOnce(new Error(''))
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('.') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件夹' }).textContent).toContain('无法打开此文件夹')
@@ -1105,7 +1109,8 @@ describe('ChatView', () => {
       }))
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('first refusal')
@@ -1126,7 +1131,8 @@ describe('ChatView', () => {
       }))
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
-    render(<h.ChatView {...h.props} />)
+    const view = render(<h.ChatView {...h.props} />)
+    expandProcessed(view)
     await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('first refusal')

@@ -3220,6 +3220,10 @@ importers:
         version: 18.3.1
 
   packages/client/web:
+    dependencies:
+      '@deepseek-ai/dsh-client-ui-theme':
+        specifier: workspace:^
+        version: link:../ui-theme
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

@@ -33,7 +33,7 @@ function processSpan(node: ChatConversationViewNode | undefined): { start: numbe
 /** Collapsible Chat process run: Think, Tool, and workflow rows. */
 export const ProcessGroup = memo(function ProcessGroup({
   keys, useSession, selectedCallId, cwd, openFile, inspectCall, forkAt,
-  loadImage, fileMentions, renderSlot, t,
+  renderMessageImages, fileMentions, renderSlot, t,
 }: ProcessGroupProps) {
   const [open, setOpen] = useState(false)
   const toggle = useCallback(() => {
@@ -74,7 +74,7 @@ export const ProcessGroup = memo(function ProcessGroup({
               openFile={openFile}
               inspectCall={inspectCall}
               forkAt={forkAt}
-              loadImage={loadImage}
+              renderMessageImages={renderMessageImages}
               fileMentions={fileMentions}
               useSession={useSession}
               renderSlot={renderSlot}

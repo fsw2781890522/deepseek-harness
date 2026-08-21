@@ -29,7 +29,7 @@ const SEATS = [
   ['settings.section', GeneralSection],
 ] as const
 
-async function bench(isLoopback = true) {
+async function bench(isLoopback = true, providedSettingsScope?: unknown) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
@@ -55,7 +55,11 @@ async function bench(isLoopback = true) {
     isLoopback,
   } as never)
   new TestRemote(ctx)
-  await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
+  if (providedSettingsScope === undefined) {
+    await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
+  } else {
+    ctx.provide('settingsScope', providedSettingsScope as never)
+  }
   return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, settingsDescribe, settingsOpenDocument }
 }
 
@@ -98,7 +102,9 @@ describe('ui-settings-general apply', () => {
     // The nav label is a locale-following thunk; owners resolve at read time.
     expect(resolveSlotLabel(entry.options.label)).toBe('通用设置')
     expect(before.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
-    expect(before.slots.entries('settings.general.item')).toEqual([])
+    expect(before.slots.entries('settings.general.item')).toMatchObject([
+      { component: ProxyPortRow, options: { id: 'proxy-port', order: 80 } },
+    ])
     // The onboarding hole stays declared for feature-owned steps; this plugin
     // no longer seats one.
     expect(before.slots.entries('settings.onboarding')).toEqual([])
@@ -122,6 +128,7 @@ describe('ui-settings-general apply', () => {
     }
     await vi.waitFor(() => {
       expect(after.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
+      expect(after.slots.entries('settings.general.item')[0]?.component).toBe(ProxyPortRow)
     })
   })
 
@@ -197,7 +204,9 @@ describe('ui-settings-general apply', () => {
     for (const [name, component] of SEATS) {
       expect(b.slots.entries(name)[0]!.component).toBe(component)
     }
-    expect(b.slots.entries('settings.general.item')).toEqual([])
+    expect(b.slots.entries('settings.general.item')).toMatchObject([
+      { component: ProxyPortRow, options: { id: 'proxy-port', order: 80 } },
+    ])
     expect(b.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
     // The recovered registrations still ride the locale path.
     b.locale.setLocale('en')
@@ -206,8 +215,6 @@ describe('ui-settings-general apply', () => {
   })
 
   it('registers the proxy port row when settingsScope is present', async () => {
-    const b = await bench()
-    declare(b.slots)
     const host = {
       getSnapshot: () => ({
         status: 'loading' as const,
@@ -225,7 +232,8 @@ describe('ui-settings-general apply', () => {
       set: vi.fn(async () => {}),
       unset: vi.fn(async () => {}),
     }
-    b.ctx.provide('settingsScope', { bind: () => host })
+    const b = await bench(false, { bind: () => host })
+    declare(b.slots)
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     await vi.waitFor(() => {
@@ -256,9 +264,9 @@ describe('ui-settings-general apply', () => {
       const fiber = b.ctx.plugin({ inject: [...inject], apply })
       await fiber.await()
       const items = b.slots.entries('settings.general.item')
-      expect(items).toHaveLength(1)
-      expect(items[0]!.component).toBe(DesktopUpdateRow)
-      expect(items[0]!.options).toMatchObject({ id: 'desktop-update', order: 90 })
+      expect(items).toHaveLength(2)
+      expect(items.map(item => item.component)).toEqual([ProxyPortRow, DesktopUpdateRow])
+      expect(items[1]!.options).toMatchObject({ id: 'desktop-update', order: 90 })
       await fiber.dispose()
       expect(b.slots.entries('settings.general.item')).toEqual([])
     } finally {

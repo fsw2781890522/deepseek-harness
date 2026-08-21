@@ -1,4 +1,5 @@
 /** Test adapter for the production conversation.details.tool registration. */
+import { fireEvent, type RenderResult } from '@testing-library/react'
 import type { HostDescription } from '@deepseek-ai/dsh-client-connection/client'
 import type {
   ChatConversationViewNode, ChatSnapshot, ConversationNode, RunningToolCall, SessionId,
@@ -69,5 +70,12 @@ export function renderToolDetails(
       useHostDescription={selector => selector(description)}
       t={t}
     />
+  }
+}
+
+/** Expand Chat process groups so settled Tool seats are mounted. */
+export function expandProcessedGroups(view: RenderResult): void {
+  for (const row of view.queryAllByRole('button', { name: /已处理|Processed/ })) {
+    fireEvent.click(row)
   }
 }

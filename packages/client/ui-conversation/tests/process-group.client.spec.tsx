@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type {
@@ -71,22 +71,26 @@ function renderGroup(
     lastAgentError: null,
   }
   const source = { getSnapshot: () => snapshot, subscribe: () => () => {} }
-  return render(
+  const renderMessageImages = vi.fn(() => null)
+  const owners: object[] = []
+  const view = render(
     <ProcessGroup
       keys={keys}
       useSession={bindSnapshotSelector(source)}
       openFile={vi.fn()}
       inspectCall={vi.fn()}
       forkAt={vi.fn()}
-      loadImage={vi.fn()}
+      renderMessageImages={renderMessageImages}
       fileMentions={() => undefined}
       renderSlot={((_key: string, owner: object) => {
+        owners.push(owner)
         const node = (owner as { readonly node?: { readonly key?: string } }).node
         return node?.key === undefined ? null : <div data-testid={`seat-${node.key}`} />
       }) as ChatViewSlotProps['renderSlot']}
       t={t}
     />,
   )
+  return Object.assign(view, { renderMessageImages, owners })
 }
 
 describe('ProcessGroup duration', () => {
@@ -122,5 +126,17 @@ describe('ProcessGroup duration', () => {
     fireEvent.click(view.getByRole('button', { name: /已处理/ }))
     expect(group?.getAttribute('data-chat-anchor-key')).toBeNull()
     expect(view.getByTestId('seat-r')).toBeTruthy()
+  })
+
+  it('passes the native message-image renderer through every expanded seat', () => {
+    const view = renderGroup(new Map([
+      ['r', viewNode('r', 'assistant-reasoning', {
+        startTime: 1_000, endTime: 2_000, blocks: [], status: 'settled', turn: 1, step: 1, time: 1_000,
+      })],
+    ]), ['r'])
+    fireEvent.click(view.getByRole('button', { name: /已处理/ }))
+    expect(view.owners).toHaveLength(1)
+    expect((view.owners[0] as { readonly renderMessageImages?: unknown }).renderMessageImages)
+      .toBe(view.renderMessageImages)
   })
 })
